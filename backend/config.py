@@ -1,16 +1,20 @@
 import os
 import pymysql
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DB_CONFIG = {
-    "host": os.getenv("MYSQLHOST") or os.getenv("DB_HOST", "localhost"),
-    "user": os.getenv("MYSQLUSER") or os.getenv("DB_USER", "root"),
-    "password": os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD"),
-    "database": os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME", "campusconnect"),
-    "port": int(os.getenv("MYSQLPORT", 3306)),
+    "host": os.getenv("MYSQLHOST", "127.0.0.1"),
+    "user": os.getenv("MYSQLUSER", "root"),
+    "password": os.getenv("MYSQLPASSWORD", ""),
+    "database": os.getenv("MYSQLDATABASE", "campusconnect"),
+    "port": int(os.getenv("MYSQLPORT", "3306")),
     "charset": "utf8mb4",
     "cursorclass": pymysql.cursors.DictCursor,
     "autocommit": True,
 }
+
 
 def get_db_connection():
     try:
@@ -18,6 +22,7 @@ def get_db_connection():
     except Exception as e:
         print(f"Error connecting to database: {e}")
         return None
+
 
 def init_db():
     conn = get_db_connection()
@@ -30,4 +35,5 @@ def init_db():
 def seed_data():
     return True
 
-print(os.getenv("DB_PASSWORD"))
+
+
