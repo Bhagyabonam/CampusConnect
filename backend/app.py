@@ -1,7 +1,7 @@
 from flask import Flask, send_file
 from flask_cors import CORS
 import os
-from routes.navigation import navigation_bp
+from backend.routes.navigation import navigation_bp
 from routes.api import api_bp
 from routes.auth import auth_bp
 from routes.dashboards.student_dashboard import student_dashboard_bp
