@@ -14,13 +14,8 @@ DB_CONFIG = {
 
 def get_db_connection():
     try:
-        return pymysql.connect(**DB_CONFIG)
+        connection = pymysql.connect(**DB_CONFIG)
+        return connection
     except Exception as e:
-        print(f"Error connecting to database: {e}")
+        print(f"Database connection error: {e}")
         return None
-
-def seed_data():
-    return True
-
-
-
