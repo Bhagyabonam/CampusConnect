@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusConnect - Tech Club</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <h2>CampusConnect</h2>
+            </div>
+            <div class="nav-menu">
+                <a href="index.html#home" class="nav-link">Home</a>
+                <a href="index.html#about" class="nav-link">About</a>
+                <a href="index.html#clubs" class="nav-link">Clubs</a>
+                <a href="index.html#events" class="nav-link">Events</a>
+                <a href="index.html#gallery" class="nav-link">Gallery</a>
+            </div>
+            <div class="hamburger" id="hamburger">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <section id="club-detail" class="section" data-club-slug="tech">
+        <div class="container">
+            <a href="index.html#clubs" class="back-button">< Back to Clubs</a>
+            <h2>Tech Club</h2>
+            <img src="assets/tech-hero.svg" alt="Tech Club Image" class="club-main-image">
+            <p class="club-description">The Tech Club is dedicated to exploring the latest advancements in technology, fostering innovation, and developing practical skills among students. We host workshops, coding competitions, and tech talks.</p>
+
+            <h3>Related to Club</h3>
+            <div class="sub-clubs-grid" id="clubSubClubsGrid"></div>
+            <p id="clubSubClubsMessage" class="club-description">Loading clubs from database...</p>
+
+            <!-- Modal for Sub-Club Details -->
+            <div id="subClubDetailModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-button">&times;</span>
+                    <h3 id="modalClubTitle"></h3>
+                    <p id="modalClubDescription"></p>
+                    <p id="modalClubMembers"></p>
+                    <p id="modalClubActivities"></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>CampusConnect</h3>
+                    <p>Connecting students, coordinators, and faculty through seamless event management.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="index.html#home">Home</a></li>
+                        <li><a href="index.html#about">About</a></li>
+                        <li><a href="index.html#events">Events</a></li>
+                        <li><a href="/login">Login</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <p>Email: info@campusconnect.edu</p>
+                    <p>Phone: (555) 123-4567</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 CampusConnect. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

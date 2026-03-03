@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="420" viewBox="0 0 800 420" role="img" aria-label="CodeChef SVECW Chapter">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#78350f"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="420" fill="url(#g)"/>
+  <g stroke="rgba(255,255,255,0.25)" fill="none">
+    <path d="M0 80 H800 M0 160 H800 M0 240 H800 M0 320 H800"/>
+  </g>
+  <text x="50" y="210" fill="white" font-size="48" font-weight="700" font-family="Poppins, Arial">CodeChef SVECW</text>
+  <text x="50" y="265" fill="white" font-size="34" font-weight="500" font-family="Poppins, Arial">Chapter</text>
+</svg>

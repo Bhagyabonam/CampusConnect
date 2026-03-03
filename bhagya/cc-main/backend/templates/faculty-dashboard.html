@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Coordinator Dashboard - CampusConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard-page faculty-dashboard-page">
+    <!-- Navigation Bar -->
+    <nav class="navbar faculty-navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/index.html">
+                    <h2>CampusConnect</h2>
+                </a>
+            </div>
+            <div class="nav-menu faculty-nav-menu">
+                <a href="#" class="nav-link" data-page="pending" onclick="switchFacultyView('pending', event)">Pending</a>
+                <a href="#" class="nav-link" data-page="approved" onclick="switchFacultyView('approved', event)">Approved</a>
+                <a href="#" class="nav-link" data-page="denied" onclick="switchFacultyView('denied', event)">Denied</a>
+                <a href="#" class="nav-link" data-page="all" onclick="switchFacultyView('all', event)">All Events</a>
+            </div>
+            <div class="user-menu">
+                <span id="userName">Loading...</span>
+                <div class="profile-menu-container">
+                    <button class="profile-icon-btn" onclick="toggleProfileMenu(event)" aria-label="Open profile menu" title="Profile">
+                        👤
+                    </button>
+                    <div id="profileDropdown" class="profile-dropdown-menu">
+                        <a href="/account.html" onclick="closeProfileMenu()">Account</a>
+                        <a href="/faq.html" onclick="closeProfileMenu()">FAQs</a>
+                        <a href="/about-us.html" onclick="closeProfileMenu()">About Us</a>
+                        <button onclick="viewAppUpdates()">App Updates</button>
+                        <button onclick="viewNotifications()">Notifications</button>
+                        <button onclick="logout()">Sign out</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Header -->
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="dashboard-info">
+                <h1>Faculty Coordinator Dashboard</h1>
+                <p>Review and manage event approval requests from student coordinators.</p>
+            </div>
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <h3 id="pendingRequests">0</h3>
+                    <p>Pending Requests</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="approvedRequests">0</h3>
+                    <p>Approved Events</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="deniedRequests">0</h3>
+                    <p>Denied Events</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div class="container">
+            <!-- Filter Tabs -->
+            <div class="filter-section">
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter="pending" onclick="filterRequests('pending', event)">Pending Requests</button>
+                    <button class="filter-tab" data-filter="approved" onclick="filterRequests('approved', event)">Approved Events</button>
+                    <button class="filter-tab" data-filter="denied" onclick="filterRequests('denied', event)">Denied Events</button>
+                    <button class="filter-tab" data-filter="all" onclick="filterRequests('all', event)">All Events</button>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="searchRequests" placeholder="Search events...">
+                    <button onclick="searchRequests()" class="search-btn">Search</button>
+                </div>
+            </div>
+
+            <!-- Requests Section -->
+            <section id="requests" class="requests-section">
+                <div class="section-header">
+                    <h2 id="sectionTitle">Pending Requests</h2>
+                    <div class="bulk-actions" id="bulkActions" style="display: none;">
+                        <button onclick="bulkApprove()" class="btn-success">Approve Selected</button>
+                        <button onclick="bulkDeny()" class="btn-danger">Deny Selected</button>
+                    </div>
+                </div>
+
+                <div id="requestsContainer" class="requests-grid">
+                    <!-- Requests will be loaded dynamically -->
+                </div>
+
+                <div id="noRequests" class="no-requests" style="display: none;">
+                    <div class="no-requests-content">
+                        <h3>No requests found</h3>
+                        <p id="noRequestsMessage">There are currently no pending requests for approval.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Request Details Modal -->
+    <div id="requestModal" class="request-modal">
+        <div class="request-modal-content">
+            <div class="request-modal-header">
+                <h3>Event Request Details</h3>
+                <span class="request-modal-close" onclick="closeRequestModal()">&times;</span>
+            </div>
+            <div id="requestModalContent">
+                <!-- Request details will be loaded here -->
+            </div>
+            <div class="request-modal-actions" id="requestModalActions">
+                <!-- Action buttons will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Rejection Reason Modal -->
+    <div id="rejectionModal" class="decision-modal">
+        <div class="decision-content">
+            <div class="decision-header">
+                <h3>Reject Event</h3>
+                <span class="decision-close" onclick="closeRejectionModal()">&times;</span>
+            </div>
+            <div class="decision-body">
+                <div class="form-group">
+                    <label for="rejectionReason">Rejection Reason *</label>
+                    <textarea id="rejectionReason" rows="4" placeholder="Please provide a reason for rejecting this event..." required></textarea>
+                    <small>This reason will be shared with the student coordinator</small>
+                </div>
+            </div>
+            <div class="decision-actions">
+                <button onclick="closeRejectionModal()" class="btn-secondary">Cancel</button>
+                <button onclick="confirmRejection()" class="btn-danger">Reject Event</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Modal -->
+    <div id="bulkModal" class="bulk-modal">
+        <div class="bulk-content">
+            <h3 id="bulkModalTitle">Bulk Actions</h3>
+            <p id="bulkModalMessage">Are you sure you want to perform this action on the selected events?</p>
+            <div class="bulk-actions-modal">
+                <button onclick="closeBulkModal()" class="btn-secondary">Cancel</button>
+                <button id="confirmBulkBtn" onclick="confirmBulkAction()" class="btn-primary">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced faculty dashboard functionality
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadUserProfile();
+            // Set filter based on URL
+            setFilterFromURL();
+            await loadRequests();
+            await updateStats();
+            setupSearchInput();
+        });
+
+        function setupSearchInput() {
+            const searchInput = document.getElementById('searchRequests');
+            if (searchInput) {
+                // Handle Enter key
+                searchInput.addEventListener('keypress', function(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        searchRequests();
+                    }
+                });
+                
+                // Handle input changes - refresh results when search box is cleared
+                searchInput.addEventListener('input', function(event) {
+                    const value = event.target.value.trim();
+                    // If search box is empty, show all requests
+                    if (value === '') {
+                        loadRequests();
+                    }
+                });
+            }
+        }
+
+        // Load user profile and ensure navbar shows account holder name
+        async function loadUserProfile() {
+            let currentUser = window.currentUser;
+            const userNameElement = document.getElementById('userName');
+
+            if (!currentUser) {
+                try {
+                    const meResp = await fetch('/auth/me', { credentials: 'include' });
+                    if (meResp.ok) {
+                        currentUser = await meResp.json();
+                        window.currentUser = currentUser;
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch /auth/me for profile', e);
+                }
+            }
+
+            if (currentUser && currentUser.name) {
+                userNameElement.textContent = currentUser.name;
+            } else if (currentUser && currentUser.email) {
+                const emailUsername = currentUser.email.split('@')[0];
+                userNameElement.textContent = emailUsername;
+            } else {
+                userNameElement.textContent = 'User';
+            }
+        }
+
+        // Enhanced logout function (server-side session if available)
+        async function logout() {
+            if (!confirm('Are you sure you want to logout?')) return;
+            try {
+                await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+            } catch (e) {
+                console.warn('Logout failed:', e);
+            }
+            window.currentUser = null;
+            window.location.href = '/login';
+        }
+
+        function toggleProfileMenu(evt) {
+            evt.stopPropagation();
+            const dropdown = document.getElementById('profileDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        function closeProfileMenu() {
+            const dropdown = document.getElementById('profileDropdown');
+            if (dropdown) dropdown.classList.remove('show');
+        }
+
+        function viewAppUpdates() {
+            alert('App is up to date. New features and improvements are coming soon.');
+            closeProfileMenu();
+        }
+
+        function viewNotifications() {
+            alert('No new notifications right now.');
+            closeProfileMenu();
+        }
+
+        document.addEventListener('click', function(event) {
+            const profileMenu = document.querySelector('.profile-menu-container');
+            if (profileMenu && !profileMenu.contains(event.target)) {
+                closeProfileMenu();
+            }
+        });
+
+        // Load requests with user context
+        async function loadRequests() {
+            try {
+                let currentUser = window.currentUser;
+                if (!currentUser) {
+                    try {
+                        const meResp = await fetch('/auth/me', { credentials: 'include' });
+                        if (meResp.ok) {
+                            currentUser = await meResp.json();
+                            window.currentUser = currentUser;
+                            await loadUserProfile();
+                        }
+                    } catch (e) {
+                        console.warn('Could not fetch /auth/me', e);
+                    }
+                }
+
+                if (!currentUser) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const response = await fetch('/api/events');
+                if (response.ok) {
+                    const events = await response.json();
+                    displayRequests(events);
+                } else {
+                    console.error('Failed to load requests');
+                }
+            } catch (error) {
+                console.error('Error loading requests:', error);
+            }
+        }
+
+        // Display requests with faculty-specific features
+        function displayRequests(events) {
+            const container = document.getElementById('requestsContainer');
+            const noRequestsDiv = document.getElementById('noRequests');
+            const sectionTitle = document.getElementById('sectionTitle');
+            
+            // Get current filter
+            const currentFilter = getCurrentFilter();
+            sectionTitle.textContent = getSectionTitle(currentFilter);
+
+            let filteredEvents = [];
+            
+            switch(currentFilter) {
+                case 'pending':
+                    filteredEvents = events.filter(event => event.status === 'pending');
+                    break;
+                case 'approved':
+                    filteredEvents = events.filter(event => event.status === 'approved');
+                    break;
+                case 'denied':
+                    filteredEvents = events.filter(event => event.status === 'denied');
+                    break;
+                case 'all':
+                    filteredEvents = events;
+                    break;
+            }
+            
+            if (filteredEvents.length === 0) {
+                container.style.display = 'none';
+                noRequestsDiv.style.display = 'block';
+                document.getElementById('noRequestsMessage').textContent = 
+                    currentFilter === 'pending' ? 'There are currently no pending requests for approval.' :
+                    currentFilter === 'approved' ? 'No events have been approved yet.' :
+                    currentFilter === 'denied' ? 'No events have been denied yet.' :
+                    'No events found.';
+                return;
+            }
+
+            container.style.display = 'grid';
+            noRequestsDiv.style.display = 'none';
+
+            container.innerHTML = filteredEvents.map(event => `
+                <div class="request-card status-${event.status}">
+                    <div class="request-header">
+                        <div class="request-info">
+                            <h3>${event.title}</h3>
+                            <div class="request-meta">
+                                <span class="request-category">${event.category}</span>
+                                <span class="request-status ${getEventStatusClass(event)}">${event.status}</span>
+                            </div>
+                            <div class="request-meta" style="margin-top: 6px; color: #666; font-size: 0.9em;">
+                                <span><strong>By:</strong> ${event.coordinator_name || 'Unknown'}</span>
+                            </div>
+                        </div>
+                        <div class="request-actions">
+                            <button onclick="openRequestModal(${event.id})" class="details-btn">View Details</button>
+                            ${event.status === 'pending' ? `
+                                <button onclick="approveEvent(${event.id})" class="approve-btn">Approve</button>
+                                <button onclick="denyEvent(${event.id})" class="deny-btn">Deny</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="request-content">
+                        <div class="request-date">
+                            <i class="calendar-icon">📅</i>
+                            ${formatDate(event.date)} at ${formatTime(event.time)}
+                        </div>
+                        <div class="request-location">
+                            <i class="location-icon">📍</i>
+                            ${event.location}
+                        </div>
+                        <div class="request-description">
+                            ${event.description}
+                        </div>
+                        <div class="request-coordinator">
+                            <strong>Coordinator:</strong> ${event.coordinator_name || 'Unknown'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Get current filter
+        function getCurrentFilter() {
+            const activeTab = document.querySelector('.filter-tab.active');
+            if (!activeTab) return 'pending';
+            return activeTab.dataset.filter || 'pending';
+        }
+
+        // Get section title based on filter
+        function getSectionTitle(filter) {
+            switch(filter) {
+                case 'pending': return 'Pending Requests';
+                case 'approved': return 'Approved Events';
+                case 'denied': return 'Denied Events';
+                case 'all': return 'All Events';
+                default: return 'Pending Requests';
+            }
+        }
+
+        // Helper functions
+        function getEventStatusClass(event) {
+            switch(event.status) {
+                case 'approved': return 'status-approved';
+                case 'pending': return 'status-pending';
+                case 'denied': return 'status-denied';
+                default: return 'status-unknown';
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        function formatTime(timeString) {
+            if (!timeString) return timeString;
+            
+            try {
+                const [hours, minutes] = timeString.split(':');
+                let h = parseInt(hours);
+                const m = minutes;
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                
+                if (h > 12) h -= 12;
+                if (h === 0) h = 12;
+                
+                return `${h.toString().padStart(2, '0')}:${m} ${ampm}`;
+            } catch (error) {
+                return timeString;
+            }
+        }
+
+        function getEventImageUrl(bannerUrl) {
+            const fallback = 'https://via.placeholder.com/300x150';
+            if (!bannerUrl) return fallback;
+
+            try {
+                const url = new URL(bannerUrl);
+
+                if (url.hostname.includes('drive.google.com')) {
+                    let fileId = '';
+                    const fileMatch = url.pathname.match(/\/file\/d\/([^/]+)/);
+
+                    if (fileMatch && fileMatch[1]) {
+                        fileId = fileMatch[1];
+                    } else if (url.searchParams.get('id')) {
+                        fileId = url.searchParams.get('id');
+                    }
+
+                    if (fileId) {
+                        return `https://drive.google.com/uc?export=view&id=${fileId}`;
+                    }
+                }
+
+                return bannerUrl;
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        // Filter functions
+        function filterRequests(status, evt) {
+            // Update active tab
+            document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+            if (evt && evt.target) {
+                evt.target.classList.add('active');
+            } else {
+                const activeBtn = document.querySelector(`.filter-tab[data-filter="${status}"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+
+            setActiveFacultyNav(status);
+            
+            // Reload requests with new filter
+            loadRequests();
+        }
+
+        function switchFacultyView(status, evt) {
+            if (evt) evt.preventDefault();
+            filterRequests(status);
+        }
+
+        function setActiveFacultyNav(page = null) {
+            if (!page) {
+                const path = window.location.pathname;
+                if (path.includes('/pending-events')) page = 'pending';
+                else if (path.includes('/approved-events')) page = 'approved';
+                else if (path.includes('/denied-events')) page = 'denied';
+                else if (path.includes('/faculty-dashboard')) page = 'all';
+                else page = 'all';
+            }
+
+            document.querySelectorAll('.faculty-nav-menu .nav-link').forEach(link => link.classList.remove('active'));
+            const activeLink = document.querySelector(`.faculty-nav-menu .nav-link[data-page="${page}"]`);
+            if (activeLink) activeLink.classList.add('active');
+        }
+
+        function searchRequests() {
+            const searchTerm = document.getElementById('searchRequests').value.toLowerCase();
+            // Search logic would go here
+            loadRequests();
+        }
+
+        // Request modal functionality
+        function openRequestModal(eventId) {
+            const modal = document.getElementById('requestModal');
+            const content = document.getElementById('requestModalContent');
+            const actions = document.getElementById('requestModalActions');
+
+            if (content) {
+                content.innerHTML = '<p style="padding: 20px;">Loading event details...</p>';
+            }
+            if (actions) {
+                actions.innerHTML = '';
+            }
+
+            modal.style.display = 'block';
+            // Load event details into modal
+            loadRequestDetails(eventId);
+        }
+
+        function closeRequestModal() {
+            const modal = document.getElementById('requestModal');
+            modal.style.display = 'none';
+        }
+
+        async function loadRequestDetails(eventId) {
+            try {
+                const response = await fetch(`/api/events/${eventId}`);
+                if (response.ok) {
+                    const event = await response.json();
+                    displayRequestDetails(event);
+                }
+            } catch (error) {
+                console.error('Error loading request details:', error);
+                const content = document.getElementById('requestModalContent');
+                const actions = document.getElementById('requestModalActions');
+                if (content) {
+                    content.innerHTML = '<p style="padding: 20px;">Failed to load event details. Please try again.</p>';
+                }
+                if (actions) {
+                    actions.innerHTML = '<button onclick="closeRequestModal()" class="btn-secondary">Close</button>';
+                }
+            }
+        }
+
+        function displayRequestDetails(event) {
+            const content = document.getElementById('requestModalContent');
+            const actions = document.getElementById('requestModalActions');
+            
+            content.innerHTML = `
+                <div class="event-content" style="padding: 24px;">
+                    <div class="event-image" style="margin-bottom: 16px;">
+                        <img src="${getEventImageUrl(event.banner_url)}" alt="${event.title}">
+                    </div>
+                    <h2 style="margin-bottom: 12px;">${event.title}</h2>
+                    <div style="display: grid; gap: 8px; margin-bottom: 14px;">
+                        <p><strong>Date:</strong> ${formatDate(event.date)} at ${formatTime(event.time)}</p>
+                        <p><strong>Location:</strong> ${event.location || 'N/A'}</p>
+                        <p><strong>Category:</strong> ${event.category || 'N/A'}</p>
+                        <p><strong>Status:</strong> ${event.status || 'N/A'}</p>
+                        <p><strong>Club:</strong> ${event.club_name || 'N/A'}</p>
+                        <p><strong>Coordinator:</strong> ${event.coordinator_name || 'Unknown'}</p>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <h3 style="margin-bottom: 8px;">Description</h3>
+                        <p>${event.description || 'No description available.'}</p>
+                    </div>
+                    ${event.form_link ? `<a href="${event.form_link}" target="_blank" class="form-link">Open Google Form</a>` : ''}
+                </div>
+            `;
+
+            if (event.status === 'pending') {
+                actions.innerHTML = `
+                    <button onclick="approveEvent(${event.id})" class="btn-success">Approve Event</button>
+                    <button onclick="denyEvent(${event.id})" class="btn-danger">Deny Event</button>
+                `;
+            } else {
+                actions.innerHTML = `
+                    <button onclick="closeRequestModal()" class="btn-secondary">Close</button>
+                `;
+            }
+        }
+
+        // Approval and denial functions
+        async function approveEvent(eventId) {
+            try {
+                const response = await fetch(`/api/events/${eventId}/approve`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        status: 'approved'
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert('Event approved successfully! Event is now visible to all students.');
+                    closeRequestModal();
+                    loadRequests();
+                    updateStats();
+                } else {
+                    const result = await response.json();
+                    alert('Failed to approve event: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error approving event:', error);
+                alert('Network error. Please try again.');
+            }
+        }
+
+        function denyEvent(eventId) {
+            const rejectionReason = prompt('Please provide a reason for rejection:');
+            if (rejectionReason === null) return; // User cancelled
+            
+            if (rejectionReason.trim() === '') {
+                alert('Please provide a rejection reason');
+                return;
+            }
+            
+            fetch(`/api/events/${eventId}/deny`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    status: 'denied',
+                    rejection_reason: rejectionReason
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Event denied successfully!');
+                    loadRequests();
+                    updateStats();
+                    closeRequestModal();
+                } else {
+                    alert('Failed to deny event: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error denying event:', error);
+                alert('Network error. Please try again.');
+            });
+        }
+
+        function closeRejectionModal() {
+            document.getElementById('rejectionModal').style.display = 'none';
+        }
+
+        // Update stats
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/events');
+                if (response.ok) {
+                    const events = await response.json();
+                    
+                    const pendingRequests = events.filter(e => e.status === 'pending').length;
+                    const approvedRequests = events.filter(e => e.status === 'approved').length;
+                    const deniedRequests = events.filter(e => e.status === 'denied').length;
+
+                    document.getElementById('pendingRequests').textContent = pendingRequests;
+                    document.getElementById('approvedRequests').textContent = approvedRequests;
+                    document.getElementById('deniedRequests').textContent = deniedRequests;
+                }
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        }
+
+        // Set filter based on URL path
+        function setFilterFromURL() {
+            const path = window.location.pathname;
+            
+            // Remove leading slash and get the last part of the path
+            const pathParts = path.split('/').filter(part => part.length > 0);
+            const lastPart = pathParts[pathParts.length - 1];
+            
+            // Map URL paths to filter types
+            let filterType = 'all'; // default
+            
+            if (lastPart === 'approved-events') {
+                filterType = 'approved';
+            } else if (lastPart === 'denied-events') {
+                filterType = 'denied';
+            } else if (lastPart === 'pending-events') {
+                filterType = 'pending';
+            } else if (lastPart === 'faculty-dashboard' || lastPart === 'faculty-dashboard.html' || path === '/') {
+                filterType = 'all';
+            }
+            
+            // Update the active tab based on the filter
+            document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+            const activeTab = document.querySelector(`.filter-tab[data-filter="${filterType}"]`);
+            if (activeTab) activeTab.classList.add('active');
+            
+            // Update section title
+            document.getElementById('sectionTitle').textContent = getSectionTitle(filterType);
+            setActiveFacultyNav(filterType);
+        }
+    </script>
+</body>
+</html>

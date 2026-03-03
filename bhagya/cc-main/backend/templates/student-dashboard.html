@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - CampusConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard-page student-dashboard-page">
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/index.html">
+                    <h2>CampusConnect</h2>
+                </a>
+            </div>
+            <div class="nav-menu student-nav-menu">
+                <a href="#events" class="nav-link" data-page="events" onclick="showNavSection('events', event)">Home</a>
+                <a href="#events" class="nav-link" data-page="wishlist" onclick="showNavSection('wishlist', event)">Wishlist</a>
+                <a href="#events" class="nav-link" data-page="history" onclick="showNavSection('history', event)">History</a>
+            </div>
+            <div class="user-menu">
+                <span id="userName">Loading...</span>
+                <div class="profile-menu-container">
+                    <button class="profile-icon-btn" onclick="toggleProfileMenu(event)" aria-label="Open profile menu" title="Profile">
+                        👤
+                    </button>
+                    <div id="profileDropdown" class="profile-dropdown-menu">
+                        <a href="/account.html" onclick="closeProfileMenu()">Account</a>
+                        <a href="/faq.html" onclick="closeProfileMenu()">FAQs</a>
+                        <a href="/about-us.html" onclick="closeProfileMenu()">About Us</a>
+                        <button onclick="viewAppUpdates()">App Updates</button>
+                        <button onclick="viewNotifications()">Notifications</button>
+                        <button onclick="logout()">Sign out</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Header -->
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="dashboard-info">
+                <h1>Student Dashboard</h1>
+                <p>Welcome back! Discover and register for exciting campus events.</p>
+            </div>
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <h3 id="totalEvents">0</h3>
+                    <p>Available Events</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="registeredEvents">0</h3>
+                    <p>History</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="wishlistEvents">0</h3>
+                    <p>Wishlisted Events</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div class="container">
+            <!-- Search and Filter Section -->
+            <div class="search-section">
+                <div class="search-box">
+                    <input type="text" id="searchEvents" placeholder="Search events...">
+                    <button onclick="searchEvents()" class="search-btn">Search</button>
+                </div>
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter="upcoming" onclick="filterEventsByStatus('upcoming', event)">Upcoming</button>
+                    <button class="filter-tab" data-filter="ongoing" onclick="filterEventsByStatus('ongoing', event)">Ongoing</button>
+                    <button class="filter-tab" data-filter="completed" onclick="filterEventsByStatus('completed', event)">Completed</button>
+                </div>
+            </div>
+
+            <!-- Events Section -->
+            <section id="events" class="events-section">
+                <div class="section-header">
+                    <h2 id="sectionTitle">Upcoming Events</h2>
+                </div>
+
+                <div id="eventsContainer" class="events-grid">
+                    <!-- Events will be loaded dynamically -->
+                </div>
+
+                <div id="noEvents" class="no-events" style="display: none;">
+                    <div class="no-events-content">
+                        <h3>No events found</h3>
+                        <p id="noEventsMessage">There are currently no events available matching your criteria.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Event Details Modal -->
+    <div id="eventModal" class="event-modal">
+        <div class="event-modal-content">
+            <span class="event-modal-close" onclick="closeEventModal()">&times;</span>
+            <div id="eventModalContent">
+                <!-- Event details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Enhanced student dashboard functionality
+        let allApprovedEvents = [];
+        let currentView = 'upcoming';
+        let wishlistedEventIds = new Set();
+        let formsOpenedByEvent = new Set(); // Track which events' forms have been opened
+        let registeredEventIds = new Set(); // Track which events the user has registered for
+        let statsRefreshTimer = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadUserProfile();
+            await loadEvents();
+            await updateStats();
+            startStatsAutoRefresh();
+            setActiveStudentNav('events');
+            setupSearchInput();
+            setupFormLinkTracking();
+        });
+
+        function setActiveStudentNav(page) {
+            document.querySelectorAll('.student-nav-menu .nav-link').forEach(link => link.classList.remove('active'));
+            const activeLink = document.querySelector(`.student-nav-menu .nav-link[data-page="${page}"]`);
+            if (activeLink) activeLink.classList.add('active');
+        }
+
+        function setSearchSectionVisibility(isVisible) {
+            const searchSection = document.querySelector('.search-section');
+            if (!searchSection) return;
+            searchSection.style.display = isVisible ? '' : 'none';
+        }
+
+        async function resolveCurrentUser() {
+            let currentUser = window.currentUser;
+
+            if (!currentUser) {
+                try {
+                    const meResp = await fetch('/auth/me', { credentials: 'include' });
+                    if (meResp.ok) {
+                        currentUser = await meResp.json();
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch /auth/me', e);
+                }
+            }
+
+            if (currentUser && !currentUser.student_number && currentUser.email) {
+                try {
+                    const userResp = await fetch(`/api/users/email/${encodeURIComponent(currentUser.email)}`);
+                    if (userResp.ok) {
+                        const fullUser = await userResp.json();
+                        currentUser = { ...currentUser, ...fullUser };
+                    }
+                } catch (e) {
+                    console.warn('Could not enrich user by email', e);
+                }
+            }
+
+            if (currentUser) {
+                window.currentUser = currentUser;
+            }
+
+            return currentUser || null;
+        }
+
+        async function getCurrentStudentNumber() {
+            const currentUser = await resolveCurrentUser();
+            return currentUser && currentUser.student_number ? currentUser.student_number : null;
+        }
+
+        function startStatsAutoRefresh() {
+            if (statsRefreshTimer) return;
+            statsRefreshTimer = setInterval(() => {
+                updateStats();
+            }, 20000);
+        }
+
+        function setupSearchInput() {
+            const searchInput = document.getElementById('searchEvents');
+            if (searchInput) {
+                // Handle Enter key
+                searchInput.addEventListener('keypress', function(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        searchEvents();
+                    }
+                });
+                
+                // Handle input changes - refresh results when search box is cleared
+                searchInput.addEventListener('input', function(event) {
+                    const value = event.target.value.trim();
+                    // If search box is empty, show all events for current view
+                    if (value === '') {
+                        applyCurrentView();
+                    }
+                });
+            }
+        }
+
+        function setupFormLinkTracking() {
+            // Use event delegation to handle dynamically rendered form links
+            document.addEventListener('click', function(event) {
+                // Check if clicked element is a form link
+                if (event.target.classList.contains('form-link') || event.target.closest('.form-link')) {
+                    const formLink = event.target.closest('.form-link');
+                    if (formLink) {
+                        const eventId = formLink.getAttribute('data-event-id');
+                        
+                        // Add event ID to formsOpenedByEvent Set
+                        if (eventId) {
+                            formsOpenedByEvent.add(parseInt(eventId));
+                            
+                            // Find and enable the corresponding register button
+                            const eventCard = formLink.closest('.event-card');
+                            if (eventCard) {
+                                const registerBtn = eventCard.querySelector('[data-event-id="' + eventId + '"][data-action="register"]');
+                                if (registerBtn) {
+                                    registerBtn.dataset.disabled = 'false';
+                                    registerBtn.title = 'Click to register for this event';
+                                    registerBtn.style.opacity = '1';
+                                    registerBtn.style.cursor = 'pointer';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load user profile and ensure navbar shows account holder name
+        async function loadUserProfile() {
+            const currentUser = await resolveCurrentUser();
+            const userNameElement = document.getElementById('userName');
+
+            if (currentUser && currentUser.name) {
+                userNameElement.textContent = currentUser.name;
+            } else if (currentUser && currentUser.email) {
+                const emailUsername = currentUser.email.split('@')[0];
+                userNameElement.textContent = emailUsername;
+            } else {
+                userNameElement.textContent = 'User';
+            }
+        }
+
+        function showNavSection(section, evt) {
+            if (evt) evt.preventDefault();
+            setActiveStudentNav(section);
+
+            switch (section) {
+                case 'wishlist':
+                    showWishlistedEvents();
+                    break;
+                case 'history':
+                    showRegisteredEvents();
+                    break;
+                case 'events':
+                default:
+                    filterEventsByStatus('upcoming');
+                    break;
+            }
+
+            const eventsSection = document.getElementById('events');
+            if (eventsSection) {
+                eventsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function setActiveFilterTab(filterKey) {
+            document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+            const tabToActivate = document.querySelector(`.filter-tab[data-filter="${filterKey}"]`);
+            if (tabToActivate) tabToActivate.classList.add('active');
+            
+            // Clear search input when tab is clicked
+            const searchInput = document.getElementById('searchEvents');
+            if (searchInput) searchInput.value = '';
+        }
+
+        function getEventImageUrl(bannerUrl) {
+            const fallback = 'https://via.placeholder.com/300x150';
+            if (!bannerUrl) return fallback;
+
+            try {
+                const url = new URL(bannerUrl);
+
+                // Convert Google Drive share/view links to direct preview links for <img>
+                if (url.hostname.includes('drive.google.com')) {
+                    let fileId = '';
+
+                    const fileMatch = url.pathname.match(/\/file\/d\/([^/]+)/);
+                    if (fileMatch && fileMatch[1]) {
+                        fileId = fileMatch[1];
+                    } else if (url.searchParams.get('id')) {
+                        fileId = url.searchParams.get('id');
+                    }
+
+                    if (fileId) {
+                        return `https://drive.google.com/uc?export=view&id=${fileId}`;
+                    }
+                }
+
+                return bannerUrl;
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        // Enhanced logout function (server-side session if available)
+        async function logout() {
+            if (!confirm('Are you sure you want to logout?')) return;
+            try {
+                await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+            } catch (e) {
+                console.warn('Logout failed:', e);
+            }
+            window.currentUser = null;
+            window.location.href = '/login';
+        }
+
+        function toggleProfileMenu(evt) {
+            evt.stopPropagation();
+            const dropdown = document.getElementById('profileDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        function closeProfileMenu() {
+            const dropdown = document.getElementById('profileDropdown');
+            if (dropdown) dropdown.classList.remove('show');
+        }
+
+        function viewAppUpdates() {
+            alert('App is up to date. New features and improvements are coming soon.');
+            closeProfileMenu();
+        }
+
+        function viewNotifications() {
+            alert('No new notifications right now.');
+            closeProfileMenu();
+        }
+
+        document.addEventListener('click', function(event) {
+            const profileMenu = document.querySelector('.profile-menu-container');
+            if (profileMenu && !profileMenu.contains(event.target)) {
+                closeProfileMenu();
+            }
+        });
+
+        // Load events with user context
+        async function loadEvents() {
+            try {
+                const currentUser = await resolveCurrentUser();
+                await loadUserProfile();
+
+                if (!currentUser) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                // Load approved events
+                const response = await fetch('/api/events');
+                if (response.ok) {
+                    const events = await response.json();
+                    allApprovedEvents = events.filter(event => event.status === 'approved');
+                    
+                    // Load wishlist
+                    await loadWishlist();
+                    // Load registered events for current user
+                    try {
+                        const regs = await fetchUserRegisteredEvents();
+                        registeredEventIds = new Set((regs || []).map(r => Number(r.event_id || r.eventId || r.id || r.event_id)));
+                    } catch (e) {
+                        console.warn('Failed to load user registrations', e);
+                        registeredEventIds = new Set();
+                    }
+                    
+                    applyCurrentView();
+                    await updateStats();
+                } else {
+                    console.error('Failed to load events');
+                }
+            } catch (error) {
+                console.error('Error loading events:', error);
+            }
+        }
+
+        // Display events with user-specific features
+        function displayEvents(events, noEventsMessage = 'There are currently no events available matching your criteria.') {
+            const container = document.getElementById('eventsContainer');
+            const currentUser = window.currentUser;
+
+            if (!currentUser) return;
+
+            const filteredEvents = events;
+            
+            if (filteredEvents.length === 0) {
+                document.getElementById('noEvents').style.display = 'block';
+                document.getElementById('eventsContainer').style.display = 'none';
+                document.getElementById('noEventsMessage').textContent = noEventsMessage;
+                return;
+            }
+
+            document.getElementById('noEvents').style.display = 'none';
+            document.getElementById('eventsContainer').style.display = 'grid';
+
+            container.innerHTML = filteredEvents.map(event => {
+                const isWishlisted = wishlistedEventIds.has(Number(event.id));
+                const hasOpenedForm = formsOpenedByEvent.has(Number(event.id));
+                const isRegistered = registeredEventIds.has(Number(event.id));
+                const registerTitle = isRegistered ? 'Already registered' : (hasOpenedForm ? 'Click to register for this event' : 'Fill the form first');
+                const registerStyle = isRegistered ? 'opacity: 0.6; cursor: not-allowed; background:#ccc;' : (hasOpenedForm ? 'opacity: 1; cursor: pointer;' : 'opacity: 0.6; cursor: not-allowed;');
+                return `
+                <div class="event-card">
+                    <div class="event-content">
+                        <div class="event-status ${getEventStatusClass(event)}">${event.status}</div>
+                        
+                        <div class="event-header">
+                            <h3>${event.title}</h3>
+                            <div class="event-actions">
+                                <button onclick="${isWishlisted ? `removeFromWishlist(${event.id})` : `addToWishlist(${event.id})`}" class="wishlist-btn ${isWishlisted ? 'wishlisted' : ''}" title="${isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}">
+                                    <span class="wishlist-icon">❤️</span>
+                                </button>
+                                <button onclick="openEventModal(${event.id})" class="details-btn">View Details</button>
+                            </div>
+                        </div>
+                        <div class="event-meta">
+                            <span class="event-category">${event.category}</span>
+                        </div>
+                        <div class="event-creator" style="font-size: 0.9em; color: #666; margin-bottom: 8px;">
+                            <strong>By:</strong> ${event.coordinator_name || 'Unknown'}
+                        </div>
+                        <div class="event-date">
+                            <i class="calendar-icon">📅</i>
+                            ${formatDate(event.date)} at ${formatTime(event.time)}
+                        </div>
+                        <div class="event-location">
+                            <i class="location-icon">📍</i>
+                            ${event.location}
+                        </div>
+                        <div class="event-description">
+                            ${event.description}
+                        </div>
+                        <div class="event-actions-bottom">
+                            ${isRegistered ? `
+                                <span class="form-link disabled">Form submitted</span>
+                                <button class="register-btn disabled" disabled title="Already registered">Registered</button>
+                            ` : `
+                                <a href="${event.form_link}" target="_blank" data-event-id="${event.id}" class="form-link">Fill form</a>
+                                <button onclick="registerForEvent(${event.id})" class="register-btn" data-event-id="${event.id}" data-action="register" data-disabled="${hasOpenedForm ? 'false' : 'true'}" style="${registerStyle}" title="${registerTitle}">confirm registration</button>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;}).join('');
+        }
+
+        function getDateOnly(dateInput) {
+            const date = new Date(dateInput);
+            return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        }
+
+        function getEventsByStatus(status) {
+            const today = new Date();
+            const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+            if (status === 'ongoing') {
+                // Ongoing: events happening TODAY ONLY
+                return allApprovedEvents.filter(event => getDateOnly(event.date).getTime() === todayDateOnly.getTime());
+            }
+
+            if (status === 'completed') {
+                // Completed: events in the past
+                return allApprovedEvents.filter(event => getDateOnly(event.date) < todayDateOnly);
+            }
+
+            // Upcoming: strictly future dates
+            return allApprovedEvents.filter(event => getDateOnly(event.date) > todayDateOnly);
+        }
+
+        function applyCurrentView() {
+            if (currentView === 'wishlist' || currentView === 'history') {
+                console.log('⏭️ Skipping filter for view:', currentView);
+                return;
+            }
+
+            const baseEvents = getEventsByStatus(currentView);
+            console.log('📋 Base events after status filter:', baseEvents ? baseEvents.length : 0);
+            
+            // Get search term from input
+            const searchInput = document.getElementById('searchEvents');
+            const searchTerm = searchInput ? (searchInput.value || '').trim().toLowerCase() : '';
+            console.log('🔎 Search term:', searchTerm);
+
+            const filtered = baseEvents.filter((event, idx) => {
+                const titleMatch = (event.title || '').toLowerCase().includes(searchTerm);
+                const descMatch = (event.description || '').toLowerCase().includes(searchTerm);
+                const locMatch = (event.location || '').toLowerCase().includes(searchTerm);
+                const matchesSearch = !searchTerm || titleMatch || descMatch || locMatch;
+                
+                if (idx === 0) {
+                    console.log('🔍 Sample event:', { title: event.title, search: matchesSearch });
+                }
+                
+                return matchesSearch;
+            });
+
+            console.log('✨ Filtered results:', filtered.length, 'events');
+            displayEvents(filtered);
+        }
+
+        async function fetchUserWishlistEvents() {
+            const studentNumber = await getCurrentStudentNumber();
+            if (!studentNumber) return [];
+
+            const response = await fetch(`/api/wishlist/${studentNumber}`);
+            if (!response.ok) return [];
+            return await response.json();
+        }
+
+        async function fetchUserRegisteredEvents() {
+            const studentNumber = await getCurrentStudentNumber();
+            if (!studentNumber) return [];
+
+            const response = await fetch(`/api/registrations/${studentNumber}`);
+            if (!response.ok) return [];
+            return await response.json();
+        }
+
+        async function registerForEvent(eventId) {
+            // Check if form was opened
+            if (!formsOpenedByEvent.has(eventId)) {
+                alert('Fill the form first');
+                return;
+            }
+
+            const studentNumber = await getCurrentStudentNumber();
+            if (!studentNumber) {
+                alert('Please login to register for events');
+                return;
+            }
+
+            // Prevent duplicate registration
+            if (registeredEventIds.has(Number(eventId))) {
+                alert('You have already registered for this event.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/registrations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        student_number: studentNumber,
+                        event_id: eventId
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    alert(result.error || 'Failed to register for event');
+                    return;
+                }
+
+                alert('Successfully registered for event!');
+                // Mark as registered locally and refresh view
+                registeredEventIds.add(Number(eventId));
+                await updateStats();
+                applyCurrentView();
+
+                if (currentView === 'history') {
+                    showRegisteredEvents();
+                }
+            } catch (error) {
+                console.error('Error registering for event:', error);
+                alert('Failed to register for event');
+            }
+        }
+
+        // Helper functions
+        function getEventStatusClass(event) {
+            switch(event.status) {
+                case 'approved': return 'status-approved';
+                case 'pending': return 'status-pending';
+                case 'denied': return 'status-denied';
+                default: return 'status-unknown';
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        function formatTime(timeString) {
+            if (!timeString) return timeString;
+            
+            try {
+                const [hours, minutes] = timeString.split(':');
+                let h = parseInt(hours);
+                const m = minutes;
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                
+                if (h > 12) h -= 12;
+                if (h === 0) h = 12;
+                
+                return `${h.toString().padStart(2, '0')}:${m} ${ampm}`;
+            } catch (error) {
+                return timeString;
+            }
+        }
+
+        // Event modal functionality
+        function openEventModal(eventId) {
+            const modal = document.getElementById('eventModal');
+            const eventContent = document.getElementById('eventModalContent');
+            if (!modal || !eventContent) return;
+
+            eventContent.innerHTML = '<p style="padding: 20px;">Loading event details...</p>';
+            modal.style.display = 'block';
+
+            fetch(`/api/events/${eventId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load event details');
+                    }
+                    return response.json();
+                })
+                .then(event => {
+                    eventContent.innerHTML = `
+                        <div class="event-content" style="padding: 24px;">
+                            <div class="event-image" style="margin-bottom: 16px;">
+                                <img src="${getEventImageUrl(event.banner_url)}" alt="${event.title}">
+                            </div>
+                            <h2 style="margin-bottom: 12px;">${event.title}</h2>
+                            <div style="display: grid; gap: 8px; margin-bottom: 14px;">
+                                <p><strong>Date:</strong> ${formatDate(event.date)} at ${formatTime(event.time)}</p>
+                                <p><strong>Location:</strong> ${event.location || 'N/A'}</p>
+                                <p><strong>Category:</strong> ${event.category || 'N/A'}</p>
+                                <p><strong>Status:</strong> ${event.status || 'N/A'}</p>
+                                <p><strong>Club:</strong> ${event.club_name || 'N/A'}</p>
+                            </div>
+                            <div style="margin-bottom: 16px;">
+                                <h3 style="margin-bottom: 8px;">Description</h3>
+                                <p>${event.description || 'No description available.'}</p>
+                            </div>
+                            ${event.form_link ? `<a href="${event.form_link}" target="_blank" class="form-link" data-event-id="${eventId}">Open Form</a>` : ''}
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Error loading event details:', error);
+                    eventContent.innerHTML = '<p style="padding: 20px;">Failed to load event details. Please try again.</p>';
+                });
+        }
+
+        function closeEventModal() {
+            const modal = document.getElementById('eventModal');
+            modal.style.display = 'none';
+        }
+
+        // Wishlist functionality
+        async function loadWishlist() {
+            const studentNumber = await getCurrentStudentNumber();
+            if (!studentNumber) return;
+
+            try {
+                const response = await fetch(`/api/wishlist/${studentNumber}`);
+                if (response.ok) {
+                    const wishlistEvents = await response.json();
+                    wishlistedEventIds = new Set(wishlistEvents.map(e => Number(e.id)));
+                }
+            } catch (error) {
+                console.error('Error loading wishlist:', error);
+            }
+        }
+
+        async function addToWishlist(eventId) {
+            const studentNumber = await getCurrentStudentNumber();
+            if (!studentNumber) {
+                alert('Please login to add events to wishlist');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/wishlist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        student_number: studentNumber,
+                        event_id: eventId
+                    })
+                });
+
+                if (response.ok) {
+                    wishlistedEventIds.add(Number(eventId));
+                    await updateStats();
+                    applyCurrentView(); // Re-render to update heart icon
+                    alert('Event added to wishlist!');
+                } else {
+                    alert('Failed to add to wishlist');
+                }
+            } catch (error) {
+                console.error('Error adding to wishlist:', error);
+            }
+        }
+
+        async function removeFromWishlist(eventId) {
+            const studentNumber = await getCurrentStudentNumber();
+            if (!studentNumber) {
+                alert('Please login to manage wishlist');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/wishlist/${studentNumber}/${eventId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (response.ok) {
+                    wishlistedEventIds.delete(Number(eventId));
+                    await updateStats();
+                    applyCurrentView(); // Re-render to update heart icon
+                    alert('Removed from wishlist');
+                } else {
+                    alert('Failed to remove from wishlist');
+                }
+            } catch (error) {
+                console.error('Error removing from wishlist:', error);
+            }
+        }
+
+
+        // Filter and search functionality
+        function filterEventsByStatus(status, evt) {
+            currentView = status;
+            setActiveFilterTab(status);
+            setSearchSectionVisibility(true);
+            
+            // Update section title
+            document.getElementById('sectionTitle').textContent = 
+                status.charAt(0).toUpperCase() + status.slice(1) + ' Events';
+            
+            applyCurrentView();
+        }
+
+        async function showWishlistedEvents(evt) {
+            currentView = 'wishlist';
+            setActiveFilterTab('wishlist');
+            setSearchSectionVisibility(false);
+            document.getElementById('sectionTitle').textContent = 'Wishlisted Events';
+
+            const wishlistEvents = await fetchUserWishlistEvents();
+            displayEvents(wishlistEvents, 'No wishlisted events found for your account.');
+            await updateStats();
+        }
+
+        async function showRegisteredEvents(evt) {
+            currentView = 'history';
+            setActiveFilterTab('history');
+            setSearchSectionVisibility(false);
+            document.getElementById('sectionTitle').textContent = 'History';
+
+            const registeredEvents = await fetchUserRegisteredEvents();
+            displayEvents(registeredEvents, 'You have not registered for any events yet.');
+            await updateStats();
+        }
+
+        function searchEvents() {
+            try {
+                console.log('🔍 searchEvents called');
+                console.log('Current view:', currentView);
+                console.log('Events array length:', allApprovedEvents ? allApprovedEvents.length : 0);
+                
+                // For special views, just apply filter
+                if (currentView === 'wishlist' || currentView === 'history') {
+                    console.log('Using special view logic');
+                    applyCurrentView();
+                    return;
+                }
+
+                // If no events loaded, load them first
+                if (!allApprovedEvents || allApprovedEvents.length === 0) {
+                    console.log('No events in cache, loading from API...');
+                    loadEvents().then(() => {
+                        console.log('Events loaded, applying filter');
+                        applyCurrentView();
+                    }).catch(err => {
+                        console.error('Error loading events:', err);
+                        applyCurrentView();
+                    });
+                } else {
+                    console.log('Events already loaded, applying filter');
+                    applyCurrentView();
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                applyCurrentView();
+            }
+        }
+
+        function filterEvents() {
+            try {
+                console.log('🎯 filterEvents called');
+                applyCurrentView();
+            } catch (error) {
+                console.error('Filter error:', error);
+            }
+        }
+
+        function setViewMode(mode, evt) {
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            const target = evt && evt.target ? evt.target : null;
+            if (target) target.classList.add('active');
+            const container = document.getElementById('eventsContainer');
+            container.className = mode === 'grid' ? 'events-grid' : 'events-list';
+        }
+
+        // Update stats
+        async function updateStats() {
+            try {
+                const totalEl = document.getElementById('totalEvents');
+                const historyEl = document.getElementById('registeredEvents');
+                const wishlistEl = document.getElementById('wishlistEvents');
+                if (!totalEl || !historyEl || !wishlistEl) return;
+
+                const studentNumber = await getCurrentStudentNumber();
+
+                let upcomingCount = 0;
+                let historyCount = 0;
+                let wishlistCount = 0;
+
+                const eventsResponse = await fetch('/api/events');
+                if (eventsResponse.ok) {
+                    const events = await eventsResponse.json();
+                    const approvedEvents = (events || []).filter(e => e.status === 'approved');
+                    const today = new Date();
+                    const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                    upcomingCount = approvedEvents.filter(event => getDateOnly(event.date) > todayDateOnly).length;
+                }
+
+                if (studentNumber) {
+                    const regResponse = await fetch(`/api/registrations/${studentNumber}`);
+                    if (regResponse.ok) {
+                        const registrations = await regResponse.json();
+                        historyCount = (registrations || []).length;
+                    }
+
+                    const wishResponse = await fetch(`/api/wishlist/${studentNumber}`);
+                    if (wishResponse.ok) {
+                        const wishlist = await wishResponse.json();
+                        wishlistCount = (wishlist || []).length;
+                    }
+                }
+
+                totalEl.textContent = upcomingCount;
+                historyEl.textContent = historyCount;
+                wishlistEl.textContent = wishlistCount;
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        }
+    </script>
+</body>
+</html>

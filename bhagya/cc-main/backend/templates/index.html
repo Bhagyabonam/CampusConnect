@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusConnect - Event Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <h2>CampusConnect</h2>
+            </div>
+            <div class="nav-menu">
+                <a href="#home" class="nav-link">Home</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="#clubs" class="nav-link">Clubs</a>
+                <a href="#events" class="nav-link">Events</a>
+                <a href="#gallery" class="nav-link">Gallery</a>
+            </div>
+            <div class="hamburger" id="hamburger">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Home Section with Slideshow -->
+    <section id="home" class="home-section">
+        <div class="slideshow-container">
+            <div class="slide fade">
+                <img src="https://images.unsplash.com/photo-1523050854058-8df90110c9e1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80" alt="Campus Life">
+                <div class="slide-content">
+                    <h1>Welcome to CampusConnect</h1>
+                    <p>Discover amazing events and connect with your campus community</p>
+                    <a href="/login" class="cta-button">Get Started</a>
+                </div>
+            </div>
+            <div class="slide fade">
+                <img src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80" alt="Student Activities">
+                <div class="slide-content">
+                    <h1>Join Exciting Events</h1>
+                    <p>From workshops to cultural festivals, there's something for everyone</p>
+                    <a href="/login" class="cta-button">Join Now</a>
+                </div>
+            </div>
+            <div class="slide fade">
+                <img src="https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80" alt="Campus Community">
+                <div class="slide-content">
+                    <h1>Build Your Network</h1>
+                    <p>Connect with peers, faculty, and industry professionals</p>
+                    <a href="/login" class="cta-button">Connect Today</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slideshow Navigation Dots -->
+        <div class="dots-container">
+            <span class="dot active" onclick="currentSlide(1)"></span>
+            <span class="dot" onclick="currentSlide(2)"></span>
+            <span class="dot" onclick="currentSlide(3)"></span>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="section">
+        <div class="container">
+            <h2>About CampusConnect</h2>
+            <p>CampusConnect is your comprehensive event management platform designed to streamline campus activities. Whether you're a student looking to join exciting events, a student coordinator planning activities, or a faculty coordinator overseeing campus events, we provide the tools you need.</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>🎯 Easy Event Discovery</h3>
+                    <p>Find and register for events that match your interests</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📋 Streamlined Management</h3>
+                    <p>Efficient event creation and approval workflow</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔐 Role-Based Access</h3>
+                    <p>Secure access with different permissions for each role</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Clubs Section -->
+    <section id="clubs" class="section">
+        <div class="container">
+            <h2>Student Clubs</h2>
+            <div class="clubs-grid">
+                <div class="club-card">
+                    <h3>Tech Club</h3>
+                    <p>Explore the latest in technology and innovation</p>
+                    <a href="/tech-club" class="cta-button club-view-button">View</a>
+                </div>
+                <div class="club-card">
+                    <h3>Arts & Cultural Club</h3>
+                    <p>Celebrate diversity through arts, culture, and creativity</p>
+                    <a href="/cultural-club" class="cta-button club-view-button">View</a>
+                </div>
+                <div class="club-card">
+                    <h3>Sports Club</h3>
+                    <p>Stay active and competitive with various sports</p>
+                    <a href="/sports-club" class="cta-button club-view-button">View</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Events Section -->
+    <section id="events" class="section">
+        <div class="container">
+            <h2>Featured Events</h2>
+            <div class="events-grid" id="publicEventsGrid">
+                <!-- Events will be loaded dynamically -->
+            </div>
+            <div class="cta-section">
+                <p>Want to see all events and register?</p>
+                <a href="/login" class="cta-button">Login to View Events</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section id="gallery" class="section">
+        <div class="container">
+            <h2>Gallery</h2>
+            <div class="gallery-grid" id="homeGalleryGrid"></div>
+            <p id="homeGalleryMessage" class="club-description">Loading gallery from database...</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>CampusConnect</h3>
+                    <p>Connecting students, coordinators, and faculty through seamless event management.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#about">About</a></li>
+                        <li><a href="#events">Events</a></li>
+                        <li><a href="/login">Login</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <p>Email: info@campusconnect.edu</p>
+                    <p>Phone: (555) 123-4567</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 CampusConnect. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

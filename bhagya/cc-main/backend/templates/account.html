@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Account - CampusConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .info-page {
+            background: #f8fafc;
+            min-height: 100vh;
+            padding-top: 90px;
+            padding-bottom: 40px;
+        }
+
+        .info-card {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            padding: 28px;
+        }
+
+        .info-card h1 {
+            color: #1d4ed8;
+            margin-bottom: 14px;
+        }
+
+        .account-grid {
+            display: grid;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .account-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: #f9fbff;
+        }
+
+        .account-item strong {
+            color: #1f2937;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .account-item span {
+            color: #4b5563;
+        }
+    </style>
+</head>
+<body class="info-page">
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/index.html"><h2>CampusConnect</h2></a>
+            </div>
+            <div class="nav-menu">
+                <a href="javascript:history.back()" class="nav-link">Back</a>
+                <a href="/index.html" class="nav-link">Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="info-card">
+            <h1>My Account</h1>
+            <p>Your logged-in account details are shown below.</p>
+
+            <div class="account-grid">
+                <div class="account-item">
+                    <strong>Name</strong>
+                    <span id="accName">N/A</span>
+                </div>
+                <div class="account-item">
+                    <strong>Email</strong>
+                    <span id="accEmail">N/A</span>
+                </div>
+                <div class="account-item">
+                    <strong>Role</strong>
+                    <span id="accRole">N/A</span>
+                </div>
+                <div class="account-item">
+                    <strong>Student Number</strong>
+                    <span id="accStudentNo">N/A</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (async function() {
+            let user = window.currentUser || null;
+            if (!user) {
+                try {
+                    const resp = await fetch('/auth/me', { credentials: 'include' });
+                    if (resp.ok) {
+                        user = await resp.json();
+                        window.currentUser = user;
+                    }
+                } catch (e) {
+                    user = {};
+                }
+            }
+
+            document.getElementById('accName').textContent = (user && user.name) ? user.name : 'N/A';
+            document.getElementById('accEmail').textContent = (user && user.email) ? user.email : 'N/A';
+            document.getElementById('accRole').textContent = (user && user.role) ? user.role : 'N/A';
+            document.getElementById('accStudentNo').textContent = (user && user.student_number) ? user.student_number : 'N/A';
+        })();
+    </script>
+</body>
+</html>

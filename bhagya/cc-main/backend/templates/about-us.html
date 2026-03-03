@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - CampusConnect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .info-page {
+            background: #f8fafc;
+            min-height: 100vh;
+            padding-top: 90px;
+            padding-bottom: 40px;
+        }
+
+        .info-card {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            padding: 28px;
+        }
+
+        .info-card h1 {
+            color: #1d4ed8;
+            margin-bottom: 14px;
+        }
+
+        .info-card p {
+            color: #4b5563;
+            line-height: 1.8;
+            margin-bottom: 14px;
+        }
+    </style>
+</head>
+<body class="info-page">
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/index.html"><h2>CampusConnect</h2></a>
+            </div>
+            <div class="nav-menu">
+                <a href="javascript:history.back()" class="nav-link">Back</a>
+                <a href="/index.html" class="nav-link">Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="info-card">
+            <h1>About CampusConnect</h1>
+            <p>
+                CampusConnect is a centralized college event management platform that connects students,
+                student coordinators, and faculty coordinators in one place. It makes event discovery,
+                event approval, and participation tracking simple and transparent.
+            </p>
+            <p>
+                Students can explore upcoming events, save favorites to wishlist, and register easily.
+                Student coordinators can create and manage event requests, while faculty coordinators
+                review and approve events to ensure quality and relevance.
+            </p>
+            <p>
+                Our goal is to improve campus engagement by providing a smooth, organized, and user-friendly
+                experience for all event-related activities.
+            </p>
+        </section>
+    </main>
+</body>
+</html>
