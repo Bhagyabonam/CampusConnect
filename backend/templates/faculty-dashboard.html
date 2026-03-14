@@ -32,8 +32,6 @@
                         <a href="/account.html" onclick="closeProfileMenu()">Account</a>
                         <a href="/faq.html" onclick="closeProfileMenu()">FAQs</a>
                         <a href="/about-us.html" onclick="closeProfileMenu()">About Us</a>
-                        <button onclick="viewAppUpdates()">App Updates</button>
-                        <button onclick="viewNotifications()">Notifications</button>
                         <button onclick="logout()">Sign out</button>
                     </div>
                 </div>
@@ -77,8 +75,8 @@
                     <button class="filter-tab" data-filter="all" onclick="filterRequests('all', event)">All Events</button>
                 </div>
                 <div class="search-box">
-                    <input type="text" id="searchRequests" placeholder="Search events...">
-                    <button onclick="searchRequests()" class="search-btn">Search</button>
+                        <input type="text" id="searchRequests" placeholder="Search events...">
+                        <button id="searchRequestsBtn" type="button" class="search-btn">Search</button>
                 </div>
             </div>
 
@@ -168,7 +166,7 @@
 
         function setupSearchInput() {
             const searchInput = document.getElementById('searchRequests');
-            if (searchInput) {
+                if (searchInput) {
                 // Handle Enter key
                 searchInput.addEventListener('keypress', function(event) {
                     if (event.key === 'Enter') {
@@ -177,14 +175,36 @@
                     }
                 });
                 
-                // Handle input changes - refresh results when search box is cleared
+                // Handle input changes - run search with debounce
+                let _searchTimeout = null;
                 searchInput.addEventListener('input', function(event) {
-                    const value = event.target.value.trim();
-                    // If search box is empty, show all requests
-                    if (value === '') {
-                        loadRequests();
-                    }
+                    const value = event.target.value;
+                    if (_searchTimeout) clearTimeout(_searchTimeout);
+                    _searchTimeout = setTimeout(() => {
+                        if (value.trim() === '') {
+                            loadRequests();
+                        } else {
+                            searchRequests();
+                        }
+                    }, 250);
                 });
+
+                // Also wire the explicit Search button to the same handler (some browsers may ignore inline onclick in certain contexts)
+                const searchBtn = document.getElementById('searchRequestsBtn');
+                if (searchBtn) {
+                    searchBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        console.debug('search button clicked');
+                        searchRequests();
+                    }, { capture: true });
+                    // Also listen for pointerdown to cover some touch environments
+                    searchBtn.addEventListener('pointerdown', function(e) {
+                        e.preventDefault();
+                    }, { passive: false, capture: true });
+                }
+
+                // Ensure searchRequests is callable from inline handlers
+                if (typeof window !== 'undefined') window.searchRequests = searchRequests;
             }
         }
 
@@ -238,15 +258,7 @@
             if (dropdown) dropdown.classList.remove('show');
         }
 
-        function viewAppUpdates() {
-            alert('App is up to date. New features and improvements are coming soon.');
-            closeProfileMenu();
-        }
-
-        function viewNotifications() {
-            alert('No new notifications right now.');
-            closeProfileMenu();
-        }
+        // Removed App Updates and Notifications handlers per UI change
 
         document.addEventListener('click', function(event) {
             const profileMenu = document.querySelector('.profile-menu-container');
@@ -491,10 +503,45 @@
             if (activeLink) activeLink.classList.add('active');
         }
 
-        function searchRequests() {
-            const searchTerm = document.getElementById('searchRequests').value.toLowerCase();
-            // Search logic would go here
-            loadRequests();
+        async function searchRequests() {
+            const input = document.getElementById('searchRequests');
+            const searchTerm = (input && input.value) ? input.value.trim().toLowerCase() : '';
+            const currentFilter = getCurrentFilter();
+
+            console.debug('searchRequests: term=', searchTerm, 'filter=', currentFilter);
+
+            try {
+                const url = `${window.location.origin}/api/events`;
+                console.debug('searchRequests: fetching', url);
+                const resp = await fetch(url, { credentials: 'same-origin' });
+                console.debug('searchRequests: fetch response', resp && resp.status);
+                if (!resp.ok) {
+                    console.error('Failed to fetch events for search', resp.status);
+                    return;
+                }
+
+                const events = await resp.json();
+                let results = events;
+
+                if (currentFilter && currentFilter !== 'all') {
+                    results = results.filter(e => (e.status || '').toLowerCase() === currentFilter);
+                }
+
+                if (searchTerm) {
+                    results = results.filter(e => {
+                        const title = (e.title || '').toLowerCase();
+                        const desc = (e.description || '').toLowerCase();
+                        const club = ((e.club_name || e.clubName) || '').toLowerCase();
+                        const coord = ((e.coordinator_name || e.coordinator || e.coordinator_name) || '').toLowerCase();
+
+                        return title.includes(searchTerm) || desc.includes(searchTerm) || club.includes(searchTerm) || coord.includes(searchTerm);
+                    });
+                }
+
+                displayRequests(results);
+            } catch (err) {
+                console.error('Error during searchRequests:', err);
+            }
         }
 
         // Request modal functionality

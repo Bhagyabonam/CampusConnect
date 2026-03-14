@@ -2,8 +2,9 @@ from flask import Blueprint, jsonify, request
 from datetime import datetime
 import pymysql
 import json
-from config import get_db_connection
-from routes.auth_guard import require_roles, ROLE_STUDENT_COORDINATOR, ROLE_FACULTY_COORDINATOR
+from ..config import get_db_connection
+from .auth_guard import require_roles, ROLE_STUDENT_COORDINATOR, ROLE_FACULTY_COORDINATOR
+import os
 
 def convert_timedelta(obj):
     """Convert timedelta objects to string format for JSON serialization"""
@@ -47,6 +48,44 @@ def get_user(student_number):
         return jsonify({"error": f"Database error: {str(e)}"}), 500
     finally:
         connection.close()
+
+
+# ==================== ROLES / REGISTRATION SCHEMA ====================
+@api_bp.route('/roles', methods=['GET'])
+def get_roles():
+    """Return available roles and their metadata from config file."""
+    try:
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        roles_path = os.path.join(base_dir, 'data', 'roles.json')
+        with open(roles_path, 'r', encoding='utf-8') as f:
+            payload = json.load(f)
+        # Return only summary list for dropdown
+        roles = [{'key': r.get('key'), 'label': r.get('label'), 'description': r.get('description', '')} for r in payload.get('roles', [])]
+        return jsonify({'roles': roles})
+    except FileNotFoundError:
+        return jsonify({'error': 'Roles configuration not found'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Failed to load roles: {str(e)}'}), 500
+
+
+@api_bp.route('/roles/<role_key>', methods=['GET'])
+def get_role_schema(role_key):
+    """Return full schema for a given role key."""
+    try:
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        roles_path = os.path.join(base_dir, 'data', 'roles.json')
+        with open(roles_path, 'r', encoding='utf-8') as f:
+            payload = json.load(f)
+
+        for r in payload.get('roles', []):
+            if r.get('key') == role_key:
+                return jsonify(r)
+
+        return jsonify({'error': 'Role not found'}), 404
+    except FileNotFoundError:
+        return jsonify({'error': 'Roles configuration not found'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Failed to load role schema: {str(e)}'}), 500
 
 @api_bp.route('/users/email/<path:email>', methods=['GET'])
 def get_user_by_email(email):

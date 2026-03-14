@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import jsonify, request, g, session
-from config import get_db_connection
+from ..config import get_db_connection
 import datetime
 
 

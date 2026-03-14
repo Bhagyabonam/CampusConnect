@@ -30,23 +30,41 @@
         }
 
         .faq-item {
-            margin-top: 18px;
-            padding: 14px;
+            margin-top: 12px;
+            padding: 12px 14px;
             border: 1px solid #e5e7eb;
             border-radius: 10px;
             background: #f9fbff;
+            cursor: pointer;
         }
 
-        .faq-item h3 {
-            margin-bottom: 8px;
+        .faq-question {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .faq-question h3 {
+            margin: 0;
             color: #1f2937;
             font-size: 1rem;
         }
 
-        .faq-item p {
-            margin: 0;
+        .faq-answer {
+            margin-top: 10px;
             color: #4b5563;
             line-height: 1.6;
+            display: none;
+        }
+
+        .faq-item.open .faq-answer {
+            display: block;
+        }
+
+        .faq-toggle {
+            font-weight: 600;
+            color: #1f2937;
+            margin-left: 12px;
         }
     </style>
 </head>
@@ -68,26 +86,100 @@
             <h1>Frequently Asked Questions (FAQs)</h1>
             <p>Find quick answers about using CampusConnect.</p>
 
-            <div class="faq-item">
-                <h3>1. How do I register for an event?</h3>
-                <p>Go to your dashboard, open the event card, and click <strong>Register Now</strong>. Your registration will be saved to your account.</p>
+            <div class="faq-item" data-index="1">
+                <div class="faq-question">
+                    <h3>How do I register for any event?</h3>
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">Open the event card on the dashboard, click <strong>Fill Form</strong>, complete the form, then click <strong>Confirm Registration</strong> to finish registering for the event.</div>
             </div>
 
-            <div class="faq-item">
-                <h3>2. How can I add events to wishlist?</h3>
-                <p>Use the heart (❤️) icon on any event card. You can view all saved events from the <strong>Wishlist</strong> section.</p>
+            <div class="faq-item" data-index="2">
+                <div class="faq-question">
+                    <h3>How can I add events to my wishlist?</h3>
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">Click the heart (❤️) icon on any event card. View and manage saved events from the <strong>Wishlist</strong> section in your dashboard.</div>
             </div>
 
-            <div class="faq-item">
-                <h3>3. Why can’t I see some events?</h3>
-                <p>Only approved events are visible to students. Pending or denied events are hidden until approved by the faculty coordinator.</p>
+            <div class="faq-item" data-index="3">
+                <div class="faq-question">
+                    <h3>Why can’t I see some events?</h3>
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">Only approved events are visible to students. Events with a status of <em>pending</em> or <em>denied</em> will not appear on the public list until approved by the faculty coordinator.</div>
             </div>
 
-            <div class="faq-item">
-                <h3>4. I forgot my account details. What should I do?</h3>
-                <p>Please contact your coordinator/admin with your registered email or student number to recover your account access.</p>
+            <div class="faq-item" data-index="4">
+                <div class="faq-question">
+                    <h3>I forgot my account details. What should I do?</h3>
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">Contact your coordinator or admin with the email address you used to register. They can help recover or reset your account information.</div>
+            </div>
+
+            <div class="faq-item" data-index="5">
+                <div class="faq-question">
+                    <h3>How do I change my password?</h3>
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">Use the account settings page (My Account) to change your password if your account supports password changes. If not available, contact support or your administrator to reset it.</div>
+            </div>
+
+            <div class="faq-item" data-index="6">
+                <div class="faq-question">
+                    <h3>What is the difference between Student Number and Faculty ID?</h3>
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">Students have a Student Number and faculty users have a Faculty ID. Your account page will display the appropriate identifier depending on your role.</div>
+            </div>
+
+            <div class="faq-item" data-index="7">
+                <div class="faq-question">
+                    <h3>How do I create or manage a club?</h3>
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">Faculty coordinators can create clubs from the club management area of the dashboard. Provide a name and description; the club will be available after creation.</div>
+            </div>
+
+            <div class="faq-item" data-index="8">
+                <div class="faq-question">
+                    <h3>How long does event approval take?</h3>
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">Approval time depends on the faculty coordinator's review. Typically events are reviewed within a few business days; you'll receive a notification after approval or denial.</div>
+            </div>
+
+            <div class="faq-item" data-index="9">
+                <div class="faq-question">
+                    <h3>Who do I contact for technical issues?</h3>
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">For site issues or bugs, contact the admin team at <strong>admin@campusconnect.example</strong> (replace with your institution's support email) and include details about the problem and screenshots if possible.</div>
+            </div>
+
+            <div class="faq-item" data-index="10">
+                <div class="faq-question">
+                    <h3>How is my data handled?</h3>
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">CampusConnect stores only the necessary account and event registration data. Please refer to your institution's privacy policy for details on retention and sharing.</div>
             </div>
         </section>
     </main>
+    <script>
+        // Simple FAQ accordion behavior
+        (function(){
+            const items = document.querySelectorAll('.faq-item');
+            items.forEach(item => {
+                const q = item.querySelector('.faq-question');
+                const toggle = item.querySelector('.faq-toggle');
+                q && q.addEventListener('click', () => {
+                    const isOpen = item.classList.toggle('open');
+                    toggle.textContent = isOpen ? '−' : '+';
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

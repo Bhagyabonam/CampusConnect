@@ -11,31 +11,23 @@ def main():
     print("Starting CampusConnect Application...")
     print("=" * 50)
     
-    # Change to backend directory
+    # Run the backend as a module so relative imports work correctly
+    # (use `python -m backend.app` to preserve package context)
     backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
     if not os.path.exists(backend_dir):
         print("❌ Backend directory not found!")
         return False
-    
-    os.chdir(backend_dir)
-    print(f"✅ Changed to directory: {backend_dir}")
-    
-    # Check if app.py exists
-    if not os.path.exists('app.py'):
-        print("❌ app.py not found in backend directory!")
-        return False
-    
-    print("✅ Found app.py")
-    
-    # Try to run the application
+
+    print(f"✅ Backend directory found: {backend_dir}")
+
+    # Try to run the application as a module to avoid relative-import errors
     try:
-        print("🚀 Starting Flask application...")
+        print("🚀 Starting Flask application (module mode)...")
         print("📍 Server will be available at: http://localhost:3000")
         print("💡 Press Ctrl+C to stop the server")
         print("=" * 50)
-        
-        # Run the application
-        subprocess.run([sys.executable, 'app.py'], check=True)
+
+        subprocess.run([sys.executable, '-m', 'backend.app'], check=True)
         
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to start application: {e}")

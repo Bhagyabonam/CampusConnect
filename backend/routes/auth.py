@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, make_response, session
 import pymysql
-from config import get_db_connection
+from ..config import get_db_connection
 import bcrypt
 import uuid
 import datetime

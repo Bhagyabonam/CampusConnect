@@ -34,8 +34,6 @@
                         <a href="/account.html" onclick="closeProfileMenu()">Account</a>
                         <a href="/faq.html" onclick="closeProfileMenu()">FAQs</a>
                         <a href="/about-us.html" onclick="closeProfileMenu()">About Us</a>
-                        <button onclick="viewAppUpdates()">App Updates</button>
-                        <button onclick="viewNotifications()">Notifications</button>
                         <button onclick="logout()">Sign out</button>
                     </div>
                 </div>
@@ -418,15 +416,7 @@
             if (dropdown) dropdown.classList.remove('show');
         }
 
-        function viewAppUpdates() {
-            alert('App is up to date. New features and improvements are coming soon.');
-            closeProfileMenu();
-        }
-
-        function viewNotifications() {
-            alert('No new notifications right now.');
-            closeProfileMenu();
-        }
+        // Notifications and App Updates features removed from dashboard menus
 
         document.addEventListener('click', function(event) {
             const profileMenu = document.querySelector('.profile-menu-container');

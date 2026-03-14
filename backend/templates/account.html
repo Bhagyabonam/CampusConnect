@@ -85,7 +85,7 @@
                     <span id="accRole">N/A</span>
                 </div>
                 <div class="account-item">
-                    <strong>Student Number</strong>
+                    <strong id="accIdLabel">Student Number</strong>
                     <span id="accStudentNo">N/A</span>
                 </div>
             </div>
@@ -109,8 +109,22 @@
 
             document.getElementById('accName').textContent = (user && user.name) ? user.name : 'N/A';
             document.getElementById('accEmail').textContent = (user && user.email) ? user.email : 'N/A';
-            document.getElementById('accRole').textContent = (user && user.role) ? user.role : 'N/A';
-            document.getElementById('accStudentNo').textContent = (user && user.student_number) ? user.student_number : 'N/A';
+            const roleText = (user && user.role) ? user.role : 'N/A';
+            document.getElementById('accRole').textContent = roleText;
+
+            const idLabelEl = document.getElementById('accIdLabel');
+            const idValueEl = document.getElementById('accStudentNo');
+
+            // Show 'Faculty ID' for faculty coordinators, otherwise 'Student Number'.
+            if (roleText === 'faculty-coordinator' || roleText === 'faculty') {
+                idLabelEl.textContent = 'Faculty ID';
+            } else {
+                idLabelEl.textContent = 'Student Number';
+            }
+
+            // Prefer explicit fields if available, fall back to student_number.
+            const idValue = (user && (user.faculty_id || user.student_number)) ? (user.faculty_id || user.student_number) : 'N/A';
+            idValueEl.textContent = idValue;
         })();
     </script>
 </body>

@@ -1,0 +1,38 @@
+{
+  "roles": [
+    {
+      "key": "student",
+      "label": "Student",
+      "description": "View and register for events",
+      "extra_fields": []
+    },
+    {
+      "key": "student-coordinator",
+      "label": "Student Coordinator",
+      "description": "Create and manage events",
+      "extra_fields": [
+        {
+          "name": "coordinator_code",
+          "label": "Coordinator Code",
+          "type": "text",
+          "placeholder": "Enter coordinator code",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "faculty-coordinator",
+      "label": "Faculty Coordinator",
+      "description": "Approve/deny events",
+      "extra_fields": [
+        {
+          "name": "department",
+          "label": "Department",
+          "type": "text",
+          "placeholder": "Enter your department",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

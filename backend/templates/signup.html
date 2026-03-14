@@ -124,44 +124,14 @@
 
         <form id="signup-form">
             <div class="form-group">
-                <label for="student_number">Student Number</label>
-                <input type="text" id="student_number" name="student_number" placeholder="Enter your student number" required>
-            </div>
-
-            <div class="form-group">
-                <label for="name">Full Name</label>
-                <input type="text" id="name" name="name" placeholder="Enter your full name" required>
-            </div>
-
-            <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="Enter your email address" required>
-            </div>
-
-            <div class="form-group">
                 <label for="role">Role</label>
                 <select id="role" name="role" required>
                     <option value="">Select your role</option>
-                    <option value="student">Student</option>
-                    <option value="student-coordinator">Student Coordinator</option>
-                    <option value="faculty-coordinator">Faculty Coordinator</option>
                 </select>
-                <div class="role-info">
-                    Student: View and register for events<br>
-                    Student Coordinator: Create and manage events<br>
-                    Faculty Coordinator: Approve/deny events
-                </div>
+                <div id="role-info" class="role-info"></div>
             </div>
 
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Create a password" required minlength="6">
-            </div>
-
-            <div class="form-group">
-                <label for="confirm_password">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required minlength="6">
-            </div>
+            <div id="dynamic-fields"></div>
 
             <button type="submit" class="btn-signup" id="signup-btn">Sign Up</button>
         </form>
@@ -177,6 +147,161 @@
             const errorDiv = document.getElementById('error-message');
             const successDiv = document.getElementById('success-message');
             const signupBtn = document.getElementById('signup-btn');
+
+            // Fetch roles config and render form dynamically
+            let rolesConfig = null;
+            async function loadRoles() {
+                try {
+                    const resp = await fetch('/api/roles');
+                    if (!resp.ok) return;
+                    const json = await resp.json();
+                    rolesConfig = json.roles || [];
+                    const roleSelect = document.getElementById('role');
+                    // populate
+                    rolesConfig.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.key;
+                        opt.textContent = r.label;
+                        roleSelect.appendChild(opt);
+                    });
+                } catch (e) {
+                    console.error('Failed to load roles', e);
+                }
+            }
+
+            function clearDynamicFields() {
+                const container = document.getElementById('dynamic-fields');
+                container.innerHTML = '';
+            }
+
+            function renderRoleInfo(roleKey) {
+                const infoDiv = document.getElementById('role-info');
+                const role = (rolesConfig || []).find(r => r.key === roleKey);
+                infoDiv.textContent = role ? role.description || '' : '';
+            }
+
+            // Render the form fields based on selected role
+            function renderFormForRole(roleKey) {
+                clearDynamicFields();
+                if (!roleKey) return;
+
+                const container = document.getElementById('dynamic-fields');
+                // Common fields mapping per role
+                const isStudent = roleKey === 'student' || roleKey === 'student-coordinator';
+                const isFaculty = roleKey === 'faculty-coordinator';
+
+                // Full Name
+                const fgName = document.createElement('div');
+                fgName.className = 'form-group';
+                const lblName = document.createElement('label');
+                lblName.setAttribute('for', 'name');
+                lblName.textContent = 'Full Name';
+                fgName.appendChild(lblName);
+                const inpName = document.createElement('input');
+                inpName.type = 'text';
+                inpName.id = 'name';
+                inpName.name = 'name';
+                inpName.placeholder = 'Enter your full name';
+                inpName.required = true;
+                fgName.appendChild(inpName);
+                container.appendChild(fgName);
+
+                // ID field - student number or faculty id
+                const fgId = document.createElement('div');
+                fgId.className = 'form-group';
+                const lblId = document.createElement('label');
+                lblId.setAttribute('for', 'student_number');
+                lblId.textContent = isFaculty ? 'Faculty ID' : 'Registered Number';
+                fgId.appendChild(lblId);
+                const inpId = document.createElement('input');
+                inpId.type = 'text';
+                inpId.id = 'student_number';
+                inpId.name = 'student_number';
+                inpId.placeholder = isFaculty ? 'Enter your faculty ID' : 'Enter your registered number';
+                inpId.required = true;
+                fgId.appendChild(inpId);
+                container.appendChild(fgId);
+
+                // Email
+                const fgEmail = document.createElement('div');
+                fgEmail.className = 'form-group';
+                const lblEmail = document.createElement('label');
+                lblEmail.setAttribute('for', 'email');
+                lblEmail.textContent = 'Email Address';
+                fgEmail.appendChild(lblEmail);
+                const inpEmail = document.createElement('input');
+                inpEmail.type = 'email';
+                inpEmail.id = 'email';
+                inpEmail.name = 'email';
+                inpEmail.placeholder = 'Enter your email address';
+                inpEmail.required = true;
+                fgEmail.appendChild(inpEmail);
+                container.appendChild(fgEmail);
+
+                // Password
+                const fgPass = document.createElement('div');
+                fgPass.className = 'form-group';
+                const lblPass = document.createElement('label');
+                lblPass.setAttribute('for', 'password');
+                lblPass.textContent = 'Password';
+                fgPass.appendChild(lblPass);
+                const inpPass = document.createElement('input');
+                inpPass.type = 'password';
+                inpPass.id = 'password';
+                inpPass.name = 'password';
+                inpPass.placeholder = 'Create a password';
+                inpPass.required = true;
+                inpPass.minLength = 6;
+                fgPass.appendChild(inpPass);
+                container.appendChild(fgPass);
+
+                // Confirm Password
+                const fgConfirm = document.createElement('div');
+                fgConfirm.className = 'form-group';
+                const lblConfirm = document.createElement('label');
+                lblConfirm.setAttribute('for', 'confirm_password');
+                lblConfirm.textContent = 'Confirm Password';
+                fgConfirm.appendChild(lblConfirm);
+                const inpConfirm = document.createElement('input');
+                inpConfirm.type = 'password';
+                inpConfirm.id = 'confirm_password';
+                inpConfirm.name = 'confirm_password';
+                inpConfirm.placeholder = 'Confirm your password';
+                inpConfirm.required = true;
+                inpConfirm.minLength = 6;
+                fgConfirm.appendChild(inpConfirm);
+                container.appendChild(fgConfirm);
+
+                // Render any additional extra_fields defined by roles config
+                if (rolesConfig) {
+                    const role = rolesConfig.find(r => r.key === roleKey);
+                    if (role && Array.isArray(role.extra_fields)) {
+                        role.extra_fields.forEach(field => {
+                            const fg = document.createElement('div');
+                            fg.className = 'form-group';
+                            const label = document.createElement('label');
+                            label.setAttribute('for', field.name);
+                            label.textContent = field.label;
+                            fg.appendChild(label);
+                            const input = document.createElement('input');
+                            input.type = field.type || 'text';
+                            input.id = field.name;
+                            input.name = field.name;
+                            input.placeholder = field.placeholder || '';
+                            if (field.required) input.required = true;
+                            fg.appendChild(input);
+                            container.appendChild(fg);
+                        });
+                    }
+                }
+            }
+
+            document.getElementById('role').addEventListener('change', function(e) {
+                renderRoleInfo(e.target.value);
+                renderFormForRole(e.target.value);
+            });
+
+            loadRoles();
 
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
@@ -196,6 +321,17 @@
                     password: formData.get('password'),
                     confirm_password: formData.get('confirm_password')
                 };
+
+                // Include any extra dynamic fields in payload
+                if (rolesConfig) {
+                    const role = rolesConfig.find(r => r.key === data.role);
+                    if (role && role.extra_fields) {
+                        role.extra_fields.forEach(f => {
+                            const val = formData.get(f.name);
+                            if (val !== null) data[f.name] = val;
+                        });
+                    }
+                }
 
                 // Validate passwords match
                 if (data.password !== data.confirm_password) {

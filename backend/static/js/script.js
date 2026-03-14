@@ -464,13 +464,8 @@ function initializeLoginPage() {
     const loginForm = document.getElementById('loginForm');
     loginForm.addEventListener('submit', handleLogin);
 
-    // Signup modal handlers
-    const signupModal = document.getElementById('signupModal');
-    const signupForm = document.getElementById('signupForm');
-    if (signupForm) {
-        signupForm.addEventListener('submit', handleSignup);
-    }
-    // Close modal when clicking outside will be handled by the global click handler
+    // Ensure signup modal exists and wire handlers
+    ensureSignupModal();
 }
 async function handleLogin(event) {
     event.preventDefault();
@@ -555,70 +550,173 @@ function closeSignupModal() {
     if (modal) modal.style.display = 'none';
 }
 
+// Create modal markup and wire up dynamic role-first form if not present
+function ensureSignupModal() {
+    if (document.getElementById('signupModal')) {
+        const existingForm = document.getElementById('signupForm');
+        if (existingForm && !existingForm.dataset.wired) {
+            existingForm.addEventListener('submit', handleSignup);
+            existingForm.dataset.wired = '1';
+        }
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'signupModal';
+    modal.className = 'signup-modal';
+    modal.style.display = 'none';
+    modal.innerHTML = `
+        <div class="signup-modal-overlay"></div>
+        <div class="signup-modal-content">
+            <span class="signup-modal-close" id="signupModalClose">&times;</span>
+            <h2>Create Account</h2>
+            <div id="signupMessage" class="login-message"></div>
+            <form id="signupForm">
+                <div class="form-group">
+                    <label for="signup_role">Role</label>
+                    <select id="signup_role" name="role" required>
+                        <option value="">Select your role</option>
+                    </select>
+                </div>
+                <div id="signup_dynamic_fields"></div>
+                <button type="submit" class="login-btn">Sign Up</button>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close handlers
+    document.getElementById('signupModalClose').addEventListener('click', closeSignupModal);
+    modal.querySelector('.signup-modal-overlay').addEventListener('click', closeSignupModal);
+
+    // Wire form
+    const signupForm = document.getElementById('signupForm');
+    signupForm.addEventListener('submit', handleSignup);
+
+    // Load roles and populate select
+    fetch('/api/roles').then(r => r.json()).then(json => {
+        const roles = json.roles || [];
+        const sel = document.getElementById('signup_role');
+        roles.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.key;
+            opt.textContent = r.label;
+            sel.appendChild(opt);
+        });
+    }).catch(() => {});
+
+    // When role changes, render fields
+    document.getElementById('signup_role').addEventListener('change', async function(e) {
+        const key = e.target.value;
+        renderSignupFieldsForRole(key);
+    });
+}
+
+async function renderSignupFieldsForRole(roleKey) {
+    const container = document.getElementById('signup_dynamic_fields');
+    container.innerHTML = '';
+    if (!roleKey) return;
+
+    // Fetch detailed role schema
+    let schema = null;
+    try {
+        const resp = await fetch(`/api/roles/${encodeURIComponent(roleKey)}`);
+        if (resp.ok) schema = await resp.json();
+    } catch (e) {
+        // ignore
+    }
+
+    const isStudent = roleKey === 'student' || roleKey === 'student-coordinator';
+    const isFaculty = roleKey === 'faculty-coordinator';
+
+    // Full Name
+    const fgName = document.createElement('div'); fgName.className='form-group';
+    const lblName = document.createElement('label'); lblName.setAttribute('for','name'); lblName.textContent='Full Name'; fgName.appendChild(lblName);
+    const inpName = document.createElement('input'); inpName.type='text'; inpName.id='name'; inpName.name='name'; inpName.placeholder='Enter your full name'; inpName.required=true; fgName.appendChild(inpName);
+    container.appendChild(fgName);
+
+    // ID field
+    const fgId = document.createElement('div'); fgId.className='form-group';
+    const lblId = document.createElement('label'); lblId.setAttribute('for','student_number'); lblId.textContent = isFaculty ? 'Faculty ID' : 'Registered Number'; fgId.appendChild(lblId);
+    const inpId = document.createElement('input'); inpId.type='text'; inpId.id='student_number'; inpId.name='student_number'; inpId.placeholder = isFaculty ? 'Enter your faculty ID' : 'Enter your registered number'; inpId.required=true; fgId.appendChild(inpId);
+    container.appendChild(fgId);
+
+    // Email
+    const fgEmail = document.createElement('div'); fgEmail.className='form-group';
+    const lblEmail = document.createElement('label'); lblEmail.setAttribute('for','email'); lblEmail.textContent='Email Address'; fgEmail.appendChild(lblEmail);
+    const inpEmail = document.createElement('input'); inpEmail.type='email'; inpEmail.id='email'; inpEmail.name='email'; inpEmail.placeholder='Enter your email address'; inpEmail.required=true; fgEmail.appendChild(inpEmail);
+    container.appendChild(fgEmail);
+
+    // Password
+    const fgPass = document.createElement('div'); fgPass.className='form-group';
+    const lblPass = document.createElement('label'); lblPass.setAttribute('for','password'); lblPass.textContent='Password'; fgPass.appendChild(lblPass);
+    const inpPass = document.createElement('input'); inpPass.type='password'; inpPass.id='password'; inpPass.name='password'; inpPass.placeholder='Create a password'; inpPass.required=true; inpPass.minLength=6; fgPass.appendChild(inpPass);
+    container.appendChild(fgPass);
+
+    // Confirm Password
+    const fgConfirm = document.createElement('div'); fgConfirm.className='form-group';
+    const lblConfirm = document.createElement('label'); lblConfirm.setAttribute('for','confirm_password'); lblConfirm.textContent='Confirm Password'; fgConfirm.appendChild(lblConfirm);
+    const inpConfirm = document.createElement('input'); inpConfirm.type='password'; inpConfirm.id='confirm_password'; inpConfirm.name='confirm_password'; inpConfirm.placeholder='Confirm your password'; inpConfirm.required=true; inpConfirm.minLength=6; fgConfirm.appendChild(inpConfirm);
+    container.appendChild(fgConfirm);
+
+    // Extra fields from schema
+    if (schema && Array.isArray(schema.extra_fields)) {
+        schema.extra_fields.forEach(field => {
+            const fg = document.createElement('div'); fg.className='form-group';
+            const label = document.createElement('label'); label.setAttribute('for', field.name); label.textContent = field.label; fg.appendChild(label);
+            const input = document.createElement('input'); input.type = field.type || 'text'; input.id = field.name; input.name = field.name; input.placeholder = field.placeholder || ''; if (field.required) input.required = true; fg.appendChild(input);
+            container.appendChild(fg);
+        });
+    }
+}
+
 async function handleSignup(event) {
     event.preventDefault();
-    const form = event.target;
+    const form = document.getElementById('signupForm');
     const formData = new FormData(form);
-    const studentNumber = formData.get('studentNumber');
-    const email = formData.get('email');
-    const name = formData.get('name');
+    const data = {
+        student_number: formData.get('student_number'),
+        name: formData.get('name'),
+        email: formData.get('email'),
+        role: formData.get('role'),
+        password: formData.get('password'),
+        confirm_password: formData.get('confirm_password')
+    };
 
-    if (!studentNumber || !email) {
-        const msg = document.getElementById('signupMessage');
-        if (msg) { msg.textContent = 'Please provide student number and email.'; msg.className='login-message error'; }
-        return;
+    // Include any dynamic extra fields
+    const dynamicElements = form.querySelectorAll('#signup_dynamic_fields .form-group input');
+    dynamicElements.forEach(inp => {
+        if (inp.name && !data.hasOwnProperty(inp.name)) data[inp.name] = inp.value;
+    });
+
+    const msg = document.getElementById('signupMessage');
+    msg.textContent = '';
+
+    if (!data.student_number || !data.email || !data.name || !data.role) {
+        msg.textContent = 'Please fill in all required fields.'; msg.className='login-message error'; return;
     }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        const msg = document.getElementById('signupMessage');
-        if (msg) { msg.textContent = 'Please enter a valid email address.'; msg.className='login-message error'; }
-        return;
+    if (data.password !== data.confirm_password) {
+        msg.textContent = 'Passwords do not match.'; msg.className='login-message error'; return;
     }
 
-    // Create student account
     try {
-        const response = await fetch('/api/students', {
+        const resp = await fetch('/auth/signup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ student_number: studentNumber, email, name })
+            body: JSON.stringify(data)
         });
-
-        if (response.status === 201) {
-            // Account created successfully
-            const respBody = await response.json().catch(() => ({}));
-            currentUser = respBody.user || { role: 'student', email };
-            window.currentUser = currentUser;
-            const msg = document.getElementById('signupMessage');
-            if (msg) { msg.textContent = 'Account created. Redirecting...'; msg.className='login-message success'; }
-            setTimeout(() => { window.location.href = 'student-dashboard.html'; }, 800);
-        } else if (response.status === 409) {
-            // Email or student number already exists
-            const msg = document.getElementById('signupMessage');
-            if (msg) { msg.textContent = 'Email or student number already exists.'; msg.className='login-message error'; }
+        const result = await resp.json().catch(() => ({}));
+        if (resp.ok) {
+            msg.textContent = 'Account created successfully. Redirecting to login...'; msg.className='login-message success';
+            setTimeout(() => { window.location.href = '/login'; }, 1500);
         } else {
-            // Other error
-            let parsed = null;
-            try {
-                parsed = await response.json();
-            } catch (e) {
-                // ignore
-            }
-            const msg = document.getElementById('signupMessage');
-            if (msg) {
-                if (parsed && parsed.error) {
-                    msg.textContent = parsed.error;
-                } else {
-                    msg.textContent = `Failed to create account (status ${response.status})`;
-                }
-                msg.className='login-message error';
-            }
+            msg.textContent = result.error || 'Registration failed'; msg.className='login-message error';
         }
-    } catch (error) {
-        console.error('Error creating student account:', error);
-        const msg = document.getElementById('signupMessage');
-        if (msg) { msg.textContent = 'Server error. Please try again.'; msg.className='login-message error'; }
+    } catch (e) {
+        console.error('Signup error', e);
+        msg.textContent = 'Network error. Please try again.'; msg.className='login-message error';
     }
 }
 
@@ -1443,261 +1541,7 @@ function loadHistoryForCoordinator() {
     `).join('');
 }
 
-// ==================== FACULTY DASHBOARD ====================
-
-function initializeFacultyDashboard() {
-    loadFacultyRequests();
-    updateFacultyStats();
-    
-    // Add event listeners
-    const searchInput = document.getElementById('searchRequests');
-    if (searchInput) {
-        searchInput.addEventListener('input', searchRequests);
-    }
-
-    // Poll backend regularly so faculty dashboard sees new submissions from other tabs/users
-    if (!window._campusconnect_faculty_poll) {
-        window._campusconnect_faculty_poll = setInterval(() => {
-            loadDataFromBackend().then(ok => {
-                if (ok) {
-                    loadFacultyRequests();
-                    updateFacultyStats();
-                }
-            }).catch(() => {});
-        }, 5000);
-    }
-}
-
-// Global variable to store pending events for faculty dashboard
-let pendingEventsData = [];
-
-async function loadFacultyRequests() {
-    try {
-        const response = await fetch('/api/events/pending');
-        if (response.ok) {
-            pendingEventsData = await response.json();
-            displayFacultyRequests(pendingEventsData);
-            updateFacultyStats(pendingEventsData);
-        } else {
-            console.error('Failed to load pending events');
-            pendingEventsData = [];
-            displayFacultyRequests([]);
-            updateFacultyStats([]);
-        }
-    } catch (error) {
-        console.error('Error loading faculty requests:', error);
-        pendingEventsData = [];
-        displayFacultyRequests([]);
-        updateFacultyStats([]);
-    }
-}
-
-function updateFacultyStats(pendingEvents = []) {
-    const pending = pendingEvents.length;
-    const approved = events.filter(event => event.status === 'approved').length;
-    const denied = events.filter(event => event.status === 'denied').length;
-    
-    const pendingRequestsElement = document.getElementById('pendingRequests');
-    const approvedRequestsElement = document.getElementById('approvedRequests');
-    const deniedRequestsElement = document.getElementById('deniedRequests');
-    
-    if (pendingRequestsElement) pendingRequestsElement.textContent = pending;
-    if (approvedRequestsElement) approvedRequestsElement.textContent = approved;
-    if (deniedRequestsElement) deniedRequestsElement.textContent = denied;
-}
-
-function filterRequests(status) {
-    let filteredEvents = events;
-    
-    if (status !== 'all') {
-        filteredEvents = events.filter(event => event.status === status);
-    }
-    
-    displayFacultyRequests(filteredEvents);
-    updateSectionTitle(status);
-    
-    // Update active tab
-    document.querySelectorAll('#facultyFilterTabs .filter-tab').forEach(tab => tab.classList.remove('active'));
-    // Assuming 'this' refers to the clicked button
-    if (event && event.target) {
-        event.target.classList.add('active');
-    }
-}
-
-function updateSectionTitle(status) {
-    const titles = {
-        'pending': 'Pending Requests',
-        'approved': 'Approved Events',
-        'denied': 'Denied Events',
-        'all': 'All Events'
-    };
-    const sectionTitleElement = document.getElementById('sectionTitle');
-    if (sectionTitleElement) {
-        sectionTitleElement.textContent = titles[status] || 'Events';
-    }
-}
-
-function searchRequests() {
-    const searchTerm = document.getElementById('searchRequests').value.toLowerCase();
-    const filteredEvents = events.filter(event => 
-        event.title.toLowerCase().includes(searchTerm) ||
-        event.description.toLowerCase().includes(searchTerm) ||
-        event.coordinator.toLowerCase().includes(searchTerm) ||
-        event.clubName.toLowerCase().includes(searchTerm)
-    );
-    
-    displayFacultyRequests(filteredEvents);
-}
-
-function displayFacultyRequests(pendingEvents) {
-    const container = document.getElementById('requestsContainer');
-    const noRequests = document.getElementById('noRequests');
-    
-    if (pendingEvents.length === 0) {
-        if (container) container.style.display = 'none';
-        if (noRequests) noRequests.style.display = 'block';
-        const noRequestsMessageElement = document.getElementById('noRequestsMessage');
-        if (noRequestsMessageElement) {
-            noRequestsMessageElement.textContent = 'No pending events to review.';
-        }
-        return;
-    }
-    
-    if (container) container.style.display = 'grid';
-    if (noRequests) noRequests.style.display = 'none';
-    
-    if (container) {
-        container.innerHTML = pendingEvents.map(event => `
-            <div class="request-card">
-                <div class="request-card-header">
-                    <h3>${event.title}</h3>
-                    <span class="event-status ${event.status}">${event.status}</span>
-                </div>
-                <div class="request-card-content">
-                    <p><strong>Club:</strong> ${event.clubName}</p>
-                    <p><strong>Category:</strong> ${event.category}</p>
-                    <p><strong>Date:</strong> ${formatDate(event.date)} at ${event.time}</p>
-                    <p><strong>Location:</strong> ${event.location}</p>
-                    <p><strong>Coordinator:</strong> ${event.createdBy}</p>
-                    <p>${event.description.substring(0, 150)}...</p>
-                </div>
-                <div class="request-card-actions">
-                    <button onclick="viewRequestDetails(${event.id})" class="btn-secondary">View Details</button>
-                    ${event.status === 'pending' ? `
-                        <button onclick="approveEvent(${event.id})" class="btn-success">Approve</button>
-                        <button onclick="denyEvent(${event.id})" class="btn-danger">Deny</button>
-                    ` : ''}
-                </div>
-            </div>
-        `).join('');
-    }
-}
-
-function viewRequestDetails(eventId) {
-    const event = pendingEventsData.find(e => e.id === eventId);
-    if (!event) return;
-    
-    const modal = document.getElementById('requestModal');
-    const content = document.getElementById('requestModalContent');
-    const actions = document.getElementById('requestModalActions');
-    
-    content.innerHTML = `
-        <div class="request-details">
-            <img src="${event.bannerUrl || 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}" alt="${event.title}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 10px; margin-bottom: 20px;">
-            <h3>${event.title}</h3>
-            <div class="event-details">
-                <p><strong>Club:</strong> ${event.clubName}</p>
-                <p><strong>Category:</strong> ${event.category}</p>
-                <p><strong>Date:</strong> ${formatDate(event.date)} at ${event.time}</p>
-                <p><strong>Location:</strong> ${event.location}</p>
-                <p><strong>Coordinator:</strong> ${event.coordinator}</p>
-                <p><strong>Status:</strong> <span class="event-status ${event.status}">${event.status}</span></p>
-                <p><strong>Description:</strong> ${event.description}</p>
-                <p><strong>Registration Form:</strong> <a href="${event.formLink}" target="_blank">${event.formLink}</a></p>
-                ${event.rejectionReason ? `<p><strong>Rejection Reason:</strong> ${event.rejectionReason}</p>` : ''}
-            </div>
-        </div>
-    `;
-    
-    if (event.status === 'pending') {
-        actions.innerHTML = `
-            <button onclick="approveEvent(${event.id})" class="btn-success">Approve Event</button>
-            <button onclick="denyEvent(${event.id})" class="btn-danger">Deny Event</button>
-        `;
-    } else if (event.status === 'approved') {
-        actions.innerHTML = `
-            <button onclick="cancelEvent(${event.id})" class="btn-danger">Cancel Event</button>
-        `;
-    } else {
-        actions.innerHTML = '';
-    }
-    
-    modal.style.display = 'block';
-}
-
-function closeRequestModal() {
-    document.getElementById('requestModal').style.display = 'none';
-}
-
-function approveEvent(eventId) {
-    if (confirm('Are you sure you want to approve this event?')) {
-        fetch(`/api/events/${eventId}/approve`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification('Event approved successfully!', 'success');
-                loadFacultyRequests(); // Refresh the pending events list
-                closeRequestModal();
-            } else {
-                showNotification('Failed to approve event: ' + data.error, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error approving event:', error);
-            showNotification('Error approving event', 'error');
-        });
-    }
-}
-
-function denyEvent(eventId) {
-    const rejectionReason = prompt('Please provide a reason for rejection:');
-    if (rejectionReason === null) return; // User cancelled
-    
-    if (rejectionReason.trim() === '') {
-        showNotification('Please provide a rejection reason', 'error');
-        return;
-    }
-    
-    fetch(`/api/events/${eventId}/deny`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            status: 'denied',
-            rejection_reason: rejectionReason
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Event denied successfully!', 'success');
-            loadFacultyRequests(); // Refresh the pending events list
-            closeRequestModal();
-        } else {
-            showNotification('Failed to deny event: ' + data.error, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error denying event:', error);
-        showNotification('Error denying event', 'error');
-    });
-}
+// Faculty dashboard logic moved to backend/templates/faculty-dashboard.html
 
 function cancelEvent(eventId) {
     if (!confirm('Are you sure you want to cancel this approved event?')) return;
@@ -1998,43 +1842,4 @@ function showEventHistory() {
     }
 }
 
-// ==================== FACULTY FUNCTIONS ====================
-
-function closeRejectionModal() {
-    document.getElementById('rejectionModal').style.display = 'none';
-    document.getElementById('rejectionReason').value = '';
-}
-
-function confirmRejection() {
-    const rejectionReason = document.getElementById('rejectionReason').value.trim();
-    if (!rejectionReason) {
-        showNotification('Please provide a rejection reason', 'error');
-        return;
-    }
-    
-    const eventId = parseInt(document.getElementById('rejectionModal').dataset.eventId);
-    const eventIndex = events.findIndex(e => e.id === eventId);
-    
-    if (eventIndex !== -1) {
-        events[eventIndex].status = 'denied';
-        events[eventIndex].rejectionReason = rejectionReason;
-        saveEvents();
-        loadFacultyRequests();
-        showNotification('Event denied successfully!', 'success');
-        closeRejectionModal();
-    }
-}
-
-
-function cancelEvent(eventId) {
-    if (!confirm('Are you sure you want to cancel this approved event?')) return;
-    
-    const eventIndex = events.findIndex(e => e.id === eventId);
-    if (eventIndex !== -1) {
-        events[eventIndex].status = 'cancelled';
-        saveEvents();
-        loadFacultyRequests();
-        showNotification('Event cancelled successfully!', 'success');
-        closeRequestModal();
-    }
-}
+// Faculty modal actions moved to backend/templates/faculty-dashboard.html (use API-driven handlers)
